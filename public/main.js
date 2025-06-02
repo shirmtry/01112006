@@ -1,5 +1,5 @@
-/ =================== CONFIG API ====================
-const API_BASE = "https://01112006.vercel.app/api"; // ĐỔI thành domain thật của bạn!
+// =================== CONFIG API ====================
+const API_BASE = "https://01112006.vercel.app/api";
 const API_USER = `${API_BASE}/user`;
 const API_REQUEST = `${API_BASE}/request`;
 const API_BET = `${API_BASE}/bet`;
@@ -28,7 +28,11 @@ function generateCaptcha(prefix = '') {
     const display = document.getElementById(prefix + 'captchaDisplay');
     if (display) display.textContent = captcha;
 }
-generateCaptcha();
+
+// ========== INIT CAPTCHA ==========
+document.addEventListener("DOMContentLoaded", () => {
+    generateCaptcha();
+});
 
 // =================== UI EVENT ======================
 document.getElementById('showRegisterLink').addEventListener('click', (e) => {
@@ -51,9 +55,9 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
     document.getElementById('captcha').value = '';
-    if (tx_interval) clearInterval(tx_interval);
-    if (tx_settleTimeout) clearTimeout(tx_settleTimeout);
-    if (betSyncInterval) clearInterval(betSyncInterval);
+    if (typeof tx_interval !== "undefined" && tx_interval) clearInterval(tx_interval);
+    if (typeof tx_settleTimeout !== "undefined" && tx_settleTimeout) clearTimeout(tx_settleTimeout);
+    if (typeof betSyncInterval !== "undefined" && betSyncInterval) clearInterval(betSyncInterval);
 });
 
 // =================== GAME STATE ====================
@@ -70,8 +74,8 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value;
     const password2 = document.getElementById('reg_password2').value;
-    const captcha = document.getElementById('reg_captcha').value?.trim().toUpperCase();
-    const captchaCode = document.getElementById('reg_captchaDisplay').textContent?.trim().toUpperCase();
+    const captcha = (document.getElementById('reg_captcha').value || '').trim().toUpperCase();
+    const captchaCode = (document.getElementById('reg_captchaDisplay').textContent || '').trim().toUpperCase();
 
     if (!username || !password || !password2 || !captcha) {
         showCustomAlert('Vui lòng nhập đầy đủ thông tin.');
@@ -105,13 +109,10 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
         const ipres = await fetch("https://api.ipify.org?format=json");
         const ipjson = await ipres.json();
         ip = ipjson.ip || "";
-    } catch (e) {
-        ip = "";
-    }
+    } catch (e) { ip = ""; }
 
     try {
         const response = await fetch(API_USER, {
-
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -148,8 +149,8 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
 document.getElementById('loginBtn').addEventListener('click', async () => {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
-    const captcha = document.getElementById('captcha').value?.trim().toUpperCase();
-    const captchaCode = document.getElementById('captchaDisplay').textContent?.trim().toUpperCase();
+    const captcha = (document.getElementById('captcha').value || '').trim().toUpperCase();
+    const captchaCode = (document.getElementById('captchaDisplay').textContent || '').trim().toUpperCase();
 
     if (!username || !password || !captcha) {
         showCustomAlert('Vui lòng điền đầy đủ thông tin đăng nhập!');
@@ -168,7 +169,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
             return;
         }
         const user = await res.json();
-        if (user.passwordHash !== hashString(password)) {
+        if (!user || !user.username || user.passwordHash !== hashString(password)) {
             showCustomAlert('Mật khẩu không đúng!');
             return;
         }
@@ -179,12 +180,9 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
             const ipres = await fetch("https://api.ipify.org?format=json");
             const ipjson = await ipres.json();
             ip = ipjson.ip || "";
-        } catch (e) {
-            ip = "";
-        }
+        } catch (e) { ip = ""; }
         try {
             await fetch(API_USER, {
-
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, ip })
@@ -210,7 +208,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     }
 });
 
-// ========== GAME FUNCTIONS (TÀI/XỈU) ===============
+// =================== GAME TÀI XỈU & GIAO DIỆN ====================
 
 // Lấy tổng cược hiện tại
 async function updateCurrentBets() {
@@ -220,7 +218,6 @@ async function updateCurrentBets() {
         let totalTai = 0;
         let totalXiu = 0;
         if (data && Array.isArray(data.bets)) {
-            // Nếu bets là mảng object (sheet.best mới) thì sửa lại
             if (typeof data.bets[0] === "object" && !Array.isArray(data.bets[0])) {
                 data.bets.forEach(bet => {
                     const amount = parseInt(bet.amount);
@@ -231,7 +228,6 @@ async function updateCurrentBets() {
                 });
             } else {
                 data.bets.forEach(bet => {
-                    // bet = [timestamp, username, side, amount]
                     const amount = parseInt(bet[3]);
                     if (!isNaN(amount)) {
                         if (bet[2] === 'tai') totalTai += amount;
@@ -319,20 +315,6 @@ async function startTXRound() {
     document.getElementById('dice2').textContent = '?';
     document.getElementById('dice3').textContent = '?';
 
-    const taiResultBox = document.querySelector('.result-box.tai');
-    const xiuResultBox = document.querySelector('.result-box.xiu');
-    if(taiResultBox) {
-        taiResultBox.classList.remove('blink');
-        taiResultBox.style.animation = '';
-        taiResultBox.style.backgroundColor = '#d4edda';
-        taiResultBox.style.color = '#155724';
-    }
-    if(xiuResultBox) {
-        xiuResultBox.classList.remove('blink');
-        xiuResultBox.style.animation = '';
-        xiuResultBox.style.backgroundColor = '#f8d7da';
-        xiuResultBox.style.color = '#721c24';
-    }
     updateStatView();
 
     betSyncInterval = setInterval(updateCurrentBets, 1500);
@@ -381,33 +363,6 @@ async function finishTXRound(dice) {
     tx_stats.push({ tai: currentTotalTai, xiu: currentTotalXiu, result: result });
     updateStatView(result);
 
-    const taiResultBox = document.querySelector('.result-box.tai');
-    const xiuResultBox = document.querySelector('.result-box.xiu');
-    if(taiResultBox) {
-        taiResultBox.classList.remove('blink');
-        taiResultBox.style.animation = '';
-        taiResultBox.style.backgroundColor = '#d4edda';
-        taiResultBox.style.color = '#155724';
-    }
-    if(xiuResultBox) {
-        xiuResultBox.classList.remove('blink');
-        xiuResultBox.style.animation = '';
-        xiuResultBox.style.backgroundColor = '#f8d7da';
-        xiuResultBox.style.color = '#721c24';
-    }
-    const blinkEl = document.querySelector(`.result-box.${result}`);
-    if (blinkEl) {
-        blinkEl.classList.add('blink');
-        blinkEl.style.animation = "blink-tx 0.35s linear alternate infinite";
-        if (result === 'tai') {
-            blinkEl.style.backgroundColor = '#111';
-            blinkEl.style.color = '#ffd600';
-        } else {
-            blinkEl.style.backgroundColor = '#fff';
-            blinkEl.style.color = '#222';
-        }
-    }
-
     const username = localStorage.getItem('current_user');
     const betSide = userBet.side;
     const betAmount = userBet.amount;
@@ -429,15 +384,11 @@ async function finishTXRound(dice) {
             }
 
             await fetch(API_USER, {
-
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, balance: balance })
             });
             document.getElementById('userBalance').textContent = balance.toLocaleString();
-
-            // Log bet history (nếu bạn có API riêng lưu lịch sử thì gọi ở đây)
-            // Nếu không có thì bỏ qua
         } catch (e) {
             showCustomAlert("Lỗi xử lý kết quả cược hoặc ghi lịch sử.");
         }
@@ -449,14 +400,6 @@ async function finishTXRound(dice) {
         clearTimeout(tx_settleTimeout);
     }
     tx_settleTimeout = setTimeout(async () => {
-        if (blinkEl) {
-            blinkEl.classList.remove('blink');
-            blinkEl.style.animation = "";
-            taiResultBox.style.backgroundColor = '#d4edda';
-            taiResultBox.style.color = '#155724';
-            xiuResultBox.style.backgroundColor = '#f8d7da';
-            xiuResultBox.style.color = '#721c24';
-        }
         updateStatView();
         await resetTXBets();
         startTXRound();
@@ -527,7 +470,6 @@ document.getElementById('placeBetBtn').addEventListener('click', async () => {
         // Trừ tiền user
         balance -= betAmount;
         await fetch(API_USER, {
-
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, balance: balance })
@@ -536,7 +478,6 @@ document.getElementById('placeBetBtn').addEventListener('click', async () => {
 
         // Ghi cược lên server
         await fetch(API_BET, {
-
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, side: betSide, amount: betAmount })
@@ -565,26 +506,6 @@ document.getElementById('betAmount').addEventListener('input', () => {
     document.querySelectorAll('.quick-bet-btn').forEach(b => b.classList.remove('selected'));
 });
 
-// ========== KHỞI ĐỘNG GAME ==========
-function startGame() {
-    document.getElementById('dice1').textContent = '?';
-    document.getElementById('dice2').textContent = '?';
-    document.getElementById('dice3').textContent = '?';
-    const taiResultBox = document.querySelector('.result-box.tai');
-    const xiuResultBox = document.querySelector('.result-box.xiu');
-    if(taiResultBox) {
-        taiResultBox.style.backgroundColor = '#d4edda';
-        taiResultBox.style.color = '#155724';
-    }
-    if(xiuResultBox) {
-        xiuResultBox.style.backgroundColor = '#f8d7da';
-        xiuResultBox.style.color = '#721c24';
-    }
-    updateStatView();
-    renderQuickBetButtons();
-    startTXRound();
-}
-
 // ========== QUICK BET BUTTONS ==========
 const quickBetList = [
     { label: "1k", value: 1000 },
@@ -612,6 +533,38 @@ function renderQuickBetButtons() {
     });
 }
 
+// ========== KHỞI ĐỘNG GAME ==========
+function startGame() {
+    document.getElementById('dice1').textContent = '?';
+    document.getElementById('dice2').textContent = '?';
+    document.getElementById('dice3').textContent = '?';
+    updateStatView();
+    renderQuickBetButtons();
+    startTXRound();
+}
+
+// ====== BỔ SUNG HÀM showCustomAlert, loadUserInfo, showAdminPanel ======
+function showCustomAlert(msg) {
+    alert(msg); // Bạn có thể thay thế bằng modal đẹp hơn nếu muốn
+}
+
+async function loadUserInfo(username) {
+    document.getElementById("userNameDisplay").textContent = username;
+    try {
+        const res = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
+        if (res.ok) {
+            const user = await res.json();
+            document.getElementById("userBalance").textContent = (user.balance || 0).toLocaleString();
+        }
+    } catch (e) {
+        document.getElementById("userBalance").textContent = "0";
+    }
+}
+
+function showAdminPanel() {
+    document.getElementById("adminPanel").style.display = "block";
+}
+
 // ========== INIT ON LOAD ==========
 document.addEventListener('DOMContentLoaded', async () => {
     const currentUser = localStorage.getItem('current_user');
@@ -628,256 +581,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('mainContent').style.display = 'none';
     }
 });
-
-// ====== BỔ SUNG HÀM showCustomAlert, loadUserInfo, showAdminPanel ======
-// Hàm hiển thị thông báo
-function showCustomAlert(msg) {
-    alert(msg); // Bạn có thể thay thế bằng modal đẹp hơn nếu muốn
-}
-
-// Hàm load thông tin user và cập nhật UI
-async function loadUserInfo(username) {
-    document.getElementById("userNameDisplay").textContent = username;
-    try {
-        const res = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
-        if (res.ok) {
-            const user = await res.json();
-            document.getElementById("userBalance").textContent = (user.balance || 0).toLocaleString();
-        }
-    } catch (e) {
-        document.getElementById("userBalance").textContent = "0";
-    }
-}
-
-// Hàm hiển thị panel admin nếu user là admin
-function showAdminPanel() {
-    document.getElementById("adminPanel").style.display = "block";
-}
-Ẩn văn bản được trích dẫn
-
-On Mon, Jun 2, 2025 at 2:40 PM Tấn Huy Đinh <dinhtanhuy547@gmail.com> wrote:
-const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // sheet.best URL của bạn
-const BET_SHEET = "bets"; // (sheet.best sẽ map sheetname nếu bạn dùng nhiều sheet, nếu chỉ 1 sheet thì bỏ qua)
-
-// Helper: lấy tất cả cược
-async function getAllBets() {
-  // Nếu dùng nhiều sheet, thêm &sheet=BET_SHEET vào URL
-  const res = await fetch(`${SHEET_BEST_URL}?sheet=${BET_SHEET}`);
-  if (!res.ok) throw new Error("Không kết nối được sheet.best");
-  return await res.json();
-}
-
-export default async function handler(req, res) {
-  if (req.method === 'POST') {
-    try {
-      const { username, side, amount } = req.body;
-      if (!username || !side || !amount) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-      const createRes = await fetch(`${SHEET_BEST_URL}?sheet=${BET_SHEET}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          timestamp: Date.now(),
-          username,
-          side,
-          amount
-        })
-      });
-      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
-      return res.status(201).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-  if (req.method === 'GET') {
-    try {
-      const bets = await getAllBets();
-      // bets là mảng object {timestamp, username, side, amount}
-      return res.json({ bets: bets || [] });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-  if (req.method === 'DELETE') {
-    try {
-      // Xóa tất cả cược: sheet.best không hỗ trợ xóa hết, sẽ PATCH hết amount=0 hoặc xóa từng dòng
-      // Ở đây sẽ PATCH tất cả cược về amount=0 như một cách "reset"
-      // Nếu bạn muốn reset thật thì nên tạo sheet mới hoặc ghi đè header
-      // (Hoặc xóa hết từng dòng bằng DELETE từng username, nhưng không tối ưu)
-      return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt, hãy xóa thủ công trên Google Sheet hoặc ghi đè bằng tay." });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-  res.status(405).end();
-}
-
-On Mon, Jun 2, 2025 at 2:39 PM Tấn Huy Đinh <dinhtanhuy547@gmail.com> wrote:
-const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // sheet.best URL của bạn
-const REQUEST_SHEET = "requests";
-
-async function getAllRequests() {
-  const res = await fetch(`${SHEET_BEST_URL}?sheet=${REQUEST_SHEET}`);
-  if (!res.ok) throw new Error("Không kết nối được sheet.best");
-  return await res.json();
-}
-
-export default async function handler(req, res) {
-  if (req.method === 'POST') {
-    try {
-      const { username, type, amount, status, bank_code } = req.body;
-      if (!username || !type || !amount || !status) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-      const createRes = await fetch(`${SHEET_BEST_URL}?sheet=${REQUEST_SHEET}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          timestamp: Date.now(),
-          username,
-          type,
-          amount,
-          status,
-          bank_code: bank_code || ""
-        })
-      });
-      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
-      return res.status(201).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-  if (req.method === 'GET') {
-    try {
-      const requests = await getAllRequests();
-      // requests là array object {timestamp, username, ...}
-      return res.json({ requests: requests || [] });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-  res.status(405).end();
-}
-
-On Mon, Jun 2, 2025 at 2:36 PM Tấn Huy Đinh <dinhtanhuy547@gmail.com> wrote:
-const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // Đổi bằng URL sheet.best của bạn
-
-// Helper: Lấy toàn bộ user
-async function getAllUsers() {
-  const res = await fetch(SHEET_BEST_URL);
-  if (!res.ok) throw new Error("Không kết nối được sheet.best");
-  return await res.json();
-}
-
-// Helper: Lấy user theo username
-async function getUser(username) {
-  const res = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}`);
-  if (!res.ok) return null;
-  const users = await res.json();
-  return (Array.isArray(users) && users.length > 0) ? users[0] : null;
-}
-
-export default async function handler(req, res) {
-  // Đăng ký user
-  if (req.method === "POST") {
-    try {
-      const { username, passwordHash, ip } = req.body;
-      if (!username || !passwordHash) {
-        return res.status(400).json({ error: "Thiếu username hoặc password." });
-      }
-      const exists = await getUser(username);
-      if (exists) {
-        return res.status(400).json({ error: "Username đã tồn tại." });
-      }
-      // Tạo user mới với balance mặc định là 10000
-      const createRes = await fetch(SHEET_BEST_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username,
-          passwordHash,
-          balance: 10000,
-          ip,
-          role: "user"
-        })
-      });
-      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
-      return res.status(201).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // Lấy thông tin user hoặc toàn bộ user
-  if (req.method === "GET") {
-    try {
-      const { username, all } = req.query;
-      if (all) {
-        const users = await getAllUsers();
-        // KHÔNG trả về passwordHash khi trả về danh sách
-        return res.status(200).json(users.map(u => ({
-          username: u.username,
-          balance: u.balance,
-          ip: u.ip,
-          role: u.role || "user"
-        })));
-      }
-      if (!username) {
-        return res.status(400).json({ error: "Thiếu username." });
-      }
-      const user = await getUser(username);
-      if (!user) {
-        return res.status(404).json({ error: "Không tìm thấy user." });
-      }
-      return res.status(200).json({
-        username: user.username,
-        passwordHash: user.passwordHash, // Để FE kiểm tra password khi login
-        balance: user.balance,
-        ip: user.ip,
-        role: user.role || "user"
-      });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // Cập nhật số dư user (và IP nếu có)
-  if (req.method === "PATCH") {
-    try {
-      const { username, balance, ip } = req.body;
-      if (!username || typeof balance === "undefined") {
-        return res.status(400).json({ error: "Thiếu username hoặc balance." });
-      }
-      // sheet.best update bằng PATCH với filter username
-      const updateRes = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ip ? { balance, ip } : { balance })
-      });
-      if (!updateRes.ok) throw new Error("Không update được user");
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // Xóa user
-  if (req.method === "DELETE") {
-    try {
-      const { username } = req.query;
-      if (!username) {
-        return res.status(400).json({ error: "Thiếu username." });
-      }
-      const delRes = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}`, {
-        method: 'DELETE'
-      });
-      if (!delRes.ok) throw new Error("Không xóa được user");
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  res.status(405).json({ error: "Phương thức không hỗ trợ." });
-}
