@@ -91,12 +91,15 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
         return;
     }
 
-    // Kiểm tra user đã tồn tại chưa
     try {
-        const check = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
+        const check = await fetch(`${API_USER}?username=${encodeURIComponent(username)}&t=${Date.now()}`);
         if (check.ok) {
-            const user = await check.json();
-            if (user && user.username) {
+            const found = await check.json();
+            if (Array.isArray(found) && found.some(u => u.username && u.username.toLowerCase() === username.toLowerCase())) {
+                showCustomAlert('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!');
+                return;
+            }
+            if (found && found.username && found.username.toLowerCase() === username.toLowerCase()) {
                 showCustomAlert('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!');
                 return;
             }
@@ -132,7 +135,6 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
             await loadUserInfo(username);
             if (ADMIN_USERNAMES.includes(username)) showAdminPanel();
             startGame();
-            // Reset form
             document.getElementById('reg_username').value = '';
             document.getElementById('reg_password').value = '';
             document.getElementById('reg_password2').value = '';
@@ -208,9 +210,82 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     }
 });
 
+// =================== NẠP/RÚT TIỀN ===================
+async function requestDeposit(username, amount, bank_code = "") {
+    try {
+        const res = await fetch(API_REQUEST, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username,
+                type: "deposit",
+                amount,
+                status: "pending",
+                bank_code
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showCustomAlert("Gửi yêu cầu nạp tiền thành công! Vui lòng chờ admin duyệt.");
+        } else {
+            showCustomAlert(data.error || "Lỗi gửi yêu cầu nạp tiền");
+        }
+    } catch (e) {
+        showCustomAlert("Lỗi kết nối máy chủ nạp tiền.");
+    }
+}
+
+async function requestWithdraw(username, amount, bank_code = "") {
+    try {
+        const res = await fetch(API_REQUEST, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username,
+                type: "withdraw",
+                amount,
+                status: "pending",
+                bank_code
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showCustomAlert("Gửi yêu cầu rút tiền thành công! Vui lòng chờ admin duyệt.");
+        } else {
+            showCustomAlert(data.error || "Lỗi gửi yêu cầu rút tiền");
+        }
+    } catch (e) {
+        showCustomAlert("Lỗi kết nối máy chủ rút tiền.");
+    }
+}
+
+if(document.getElementById('depositBtn')) {
+    document.getElementById('depositBtn').addEventListener('click', async () => {
+        const username = localStorage.getItem('current_user');
+        const amount = parseInt(document.getElementById('depositAmount').value);
+        const bank_code = document.getElementById('depositBank') ? document.getElementById('depositBank').value : "";
+        if (!username || !amount || amount <= 0) {
+            showCustomAlert("Vui lòng nhập số tiền muốn nạp.");
+            return;
+        }
+        await requestDeposit(username, amount, bank_code);
+    });
+}
+if(document.getElementById('withdrawBtn')) {
+    document.getElementById('withdrawBtn').addEventListener('click', async () => {
+        const username = localStorage.getItem('current_user');
+        const amount = parseInt(document.getElementById('withdrawAmount').value);
+        const bank_code = document.getElementById('withdrawBank') ? document.getElementById('withdrawBank').value : "";
+        if (!username || !amount || amount <= 0) {
+            showCustomAlert("Vui lòng nhập số tiền muốn rút.");
+            return;
+        }
+        await requestWithdraw(username, amount, bank_code);
+    });
+}
+
 // =================== GAME TÀI XỈU & GIAO DIỆN ====================
 
-// Lấy tổng cược hiện tại
 async function updateCurrentBets() {
     try {
         const response = await fetch(API_BET);
@@ -218,30 +293,20 @@ async function updateCurrentBets() {
         let totalTai = 0;
         let totalXiu = 0;
         if (data && Array.isArray(data.bets)) {
-            if (typeof data.bets[0] === "object" && !Array.isArray(data.bets[0])) {
-                data.bets.forEach(bet => {
-                    const amount = parseInt(bet.amount);
-                    if (!isNaN(amount)) {
-                        if (bet.side === 'tai') totalTai += amount;
-                        if (bet.side === 'xiu') totalXiu += amount;
-                    }
-                });
-            } else {
-                data.bets.forEach(bet => {
-                    const amount = parseInt(bet[3]);
-                    if (!isNaN(amount)) {
-                        if (bet[2] === 'tai') totalTai += amount;
-                        if (bet[2] === 'xiu') totalXiu += amount;
-                    }
-                });
-            }
+            (data.bets).forEach(bet => {
+                const amount = parseInt(bet.amount || bet[3]);
+                const side = bet.side || bet[2];
+                if (!isNaN(amount)) {
+                    if (side === 'tai') totalTai += amount;
+                    if (side === 'xiu') totalXiu += amount;
+                }
+            });
         }
         document.getElementById('tx-total-tai').textContent = totalTai.toLocaleString();
         document.getElementById('tx-total-xiu').textContent = totalXiu.toLocaleString();
     } catch (e) {}
 }
 
-// Reset bets cho round mới
 async function resetTXBets() {
     userBet = { side: null, amount: 0 };
     setTXTotals(0, 0);
