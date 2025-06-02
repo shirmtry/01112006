@@ -66,8 +66,9 @@ let MAX_STATS = 20;
 let tx_interval = null;
 let tx_settleTimeout = null;
 let betSyncInterval = null;
-let userBet = { side: null, amount: 0 };
+let userBet = { side: null, amount: 0, round: 0 };
 let tx_locked = false;
+let tx_round = 1; // Số thứ tự phiên chơi
 
 // ========== ĐĂNG KÝ ==========
 document.getElementById('registerBtn').addEventListener('click', async () => {
@@ -106,7 +107,6 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
         }
     } catch (e) {}
 
-    // Lấy IP đăng ký (tùy chọn)
     let ip = "";
     try {
         const ipres = await fetch("https://api.ipify.org?format=json");
@@ -127,7 +127,6 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
         const data = await response.json();
         if (response.ok && data.success) {
             showCustomAlert('Đăng ký thành công, bạn đã được đăng nhập!');
-            // Đăng nhập luôn
             localStorage.setItem('current_user', username);
             localStorage.setItem('is_admin', ADMIN_USERNAMES.includes(username) ? '1' : '');
             document.getElementById("registerForm").style.display = "none";
@@ -176,7 +175,6 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
             return;
         }
 
-        // ==== CẬP NHẬT IP ĐĂNG NHẬP ====
         let ip = "";
         try {
             const ipres = await fetch("https://api.ipify.org?format=json");
@@ -259,6 +257,15 @@ async function requestWithdraw(username, amount, bank_code = "") {
     }
 }
 
+// Đảm bảo nút nạp/rút khả dụng cho user đăng nhập
+document.addEventListener("DOMContentLoaded", function() {
+    const currentUser = localStorage.getItem('current_user');
+    if (currentUser) {
+        if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = false;
+        if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = false;
+    }
+});
+
 if(document.getElementById('depositBtn')) {
     document.getElementById('depositBtn').addEventListener('click', async () => {
         const username = localStorage.getItem('current_user');
@@ -285,7 +292,6 @@ if(document.getElementById('withdrawBtn')) {
 }
 
 // =================== GAME TÀI XỈU & GIAO DIỆN ====================
-
 async function updateCurrentBets() {
     try {
         const response = await fetch(API_BET);
@@ -308,7 +314,7 @@ async function updateCurrentBets() {
 }
 
 async function resetTXBets() {
-    userBet = { side: null, amount: 0 };
+    userBet = { side: null, amount: 0, round: tx_round };
     setTXTotals(0, 0);
     document.getElementById('betTai').classList.remove('selected');
     document.getElementById('betXiu').classList.remove('selected');
@@ -431,6 +437,23 @@ async function finishTXRound(dice) {
     const username = localStorage.getItem('current_user');
     const betSide = userBet.side;
     const betAmount = userBet.amount;
+    // Báo kết quả phiên cược về sheet.best
+    try {
+        await fetch(API_BET, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                round: tx_round,
+                username: username || "",
+                side: betSide || "",
+                amount: betAmount || 0,
+                result: result,
+                sum: sum,
+                time: new Date().toISOString()
+            })
+        });
+    } catch (e) {}
+
     if (betSide && betAmount && username) {
         try {
             const res = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
@@ -465,6 +488,7 @@ async function finishTXRound(dice) {
         clearTimeout(tx_settleTimeout);
     }
     tx_settleTimeout = setTimeout(async () => {
+        tx_round++;
         updateStatView();
         await resetTXBets();
         startTXRound();
@@ -532,7 +556,7 @@ document.getElementById('placeBetBtn').addEventListener('click', async () => {
             return;
         }
 
-        // Trừ tiền user
+        // Trừ tiền user và cập nhật ngay
         balance -= betAmount;
         await fetch(API_USER, {
             method: 'PATCH',
@@ -541,15 +565,22 @@ document.getElementById('placeBetBtn').addEventListener('click', async () => {
         });
         document.getElementById('userBalance').textContent = balance.toLocaleString();
 
-        // Ghi cược lên server
+        // Ghi cược lên server, báo về sheet.best phiên cược
         await fetch(API_BET, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, side: betSide, amount: betAmount })
+            body: JSON.stringify({
+                round: tx_round,
+                username,
+                side: betSide,
+                amount: betAmount,
+                time: new Date().toISOString()
+            })
         });
 
         userBet.amount = (userBet.amount || 0) + betAmount;
         userBet.side = betSide;
+        userBet.round = tx_round;
 
         if (betSide === 'tai') {
             document.getElementById('tx-total-tai').textContent =
@@ -641,8 +672,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             showAdminPanel();
         }
         startGame();
+        // Enable nạp/rút
+        if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = false;
+        if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = false;
     } else {
         document.getElementById('loginForm').style.display = 'block';
         document.getElementById('mainContent').style.display = 'none';
+        if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = true;
+        if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = true;
     }
 });
