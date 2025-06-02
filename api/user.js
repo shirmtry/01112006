@@ -1,6 +1,3 @@
-const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // Đổi bằng URL sheet.best của bạn
-
-// Helper: Lấy toàn bộ user
 async function getAllUsers() {
   const res = await fetch(SHEET_BEST_URL);
   if (!res.ok) throw new Error("Không kết nối được sheet.best");
