@@ -1,5 +1,5 @@
 // Gọi sheet.best trực tiếp từ frontend (thay YOUR_SHEET_ID bằng ID thật)
-const SHEET_BEST_URL = 'https://sheet.best/api/sheets/YOUR_SHEET_ID';
+const SHEET_BEST_URL = 'https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb';
 
 const form = document.getElementById('betForm');
 const betList = document.getElementById('betList');
