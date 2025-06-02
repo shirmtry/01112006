@@ -1,5 +1,4 @@
-// Khai báo SHEET_BEST_URL ở đầu file (bắt buộc, không được thiếu!)
-const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
+const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // sheet.best URL của bạn
 
 // Helper: Lấy toàn bộ user
 async function getAllUsers() {
@@ -8,12 +7,15 @@ async function getAllUsers() {
   return await res.json();
 }
 
-// Helper: Lấy user theo username
+// Helper: Lấy user theo username (so sánh chính xác, không bị lỗi dòng rỗng)
 async function getUser(username) {
-  const res = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}`);
+  const res = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}&t=${Date.now()}`);
   if (!res.ok) return null;
   const users = await res.json();
-  return (Array.isArray(users) && users.length > 0) ? users[0] : null;
+  // Trả về đúng user có username trùng (không bị dòng rỗng/hỏng, không phân biệt hoa thường)
+  return (Array.isArray(users) && users.length > 0)
+    ? users.find(u => u.username && u.username.toLowerCase() === username.toLowerCase()) || null
+    : null;
 }
 
 export default async function handler(req, res) {
@@ -25,7 +27,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Thiếu username hoặc password." });
       }
       const exists = await getUser(username);
-      if (exists) {
+      if (exists && exists.username && exists.username.toLowerCase() === username.toLowerCase()) {
         return res.status(400).json({ error: "Username đã tồn tại." });
       }
       // Tạo user mới với balance mặc định là 10000
