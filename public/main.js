@@ -209,7 +209,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 });
 
 // =================== NẠP/RÚT TIỀN ===================
-async function requestDeposit(username, amount, bank_code = "") {
+async function requestDeposit(username, amount, bank_code = "", note = "") {
     try {
         const res = await fetch(API_REQUEST, {
             method: "POST",
@@ -218,13 +218,25 @@ async function requestDeposit(username, amount, bank_code = "") {
                 username,
                 type: "deposit",
                 amount,
-                status: "pending",
-                bank_code
+                bank_code,
+                note
             })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-            showCustomAlert("Gửi yêu cầu nạp tiền thành công! Vui lòng chờ admin duyệt.");
+            // Cập nhật số dư ngay (v16)
+            try {
+                const userRes = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
+                const user = await userRes.json();
+                let balance = parseInt(user.balance || 0) + parseInt(amount);
+                await fetch(API_USER, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, balance })
+                });
+                document.getElementById("userBalance").textContent = balance.toLocaleString();
+            } catch (e) {}
+            showCustomAlert("Gửi yêu cầu nạp tiền thành công! Số dư đã cộng tạm thời. Vui lòng chờ admin xác nhận.");
         } else {
             showCustomAlert(data.error || "Lỗi gửi yêu cầu nạp tiền");
         }
@@ -233,7 +245,7 @@ async function requestDeposit(username, amount, bank_code = "") {
     }
 }
 
-async function requestWithdraw(username, amount, bank_code = "") {
+async function requestWithdraw(username, amount, bank_code = "", note = "") {
     try {
         const res = await fetch(API_REQUEST, {
             method: "POST",
@@ -242,13 +254,25 @@ async function requestWithdraw(username, amount, bank_code = "") {
                 username,
                 type: "withdraw",
                 amount,
-                status: "pending",
-                bank_code
+                bank_code,
+                note
             })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-            showCustomAlert("Gửi yêu cầu rút tiền thành công! Vui lòng chờ admin duyệt.");
+            // Trừ số dư ngay (v16)
+            try {
+                const userRes = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
+                const user = await userRes.json();
+                let balance = parseInt(user.balance || 0) - parseInt(amount);
+                await fetch(API_USER, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, balance })
+                });
+                document.getElementById("userBalance").textContent = balance.toLocaleString();
+            } catch (e) {}
+            showCustomAlert("Gửi yêu cầu rút tiền thành công! Số dư đã trừ tạm thời. Vui lòng chờ admin xác nhận.");
         } else {
             showCustomAlert(data.error || "Lỗi gửi yêu cầu rút tiền");
         }
@@ -257,25 +281,18 @@ async function requestWithdraw(username, amount, bank_code = "") {
     }
 }
 
-// Đảm bảo nút nạp/rút khả dụng cho user đăng nhập
-document.addEventListener("DOMContentLoaded", function() {
-    const currentUser = localStorage.getItem('current_user');
-    if (currentUser) {
-        if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = false;
-        if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = false;
-    }
-});
-
+// ========== Sự kiện nút nạp/rút ==========
 if(document.getElementById('depositBtn')) {
     document.getElementById('depositBtn').addEventListener('click', async () => {
         const username = localStorage.getItem('current_user');
         const amount = parseInt(document.getElementById('depositAmount').value);
         const bank_code = document.getElementById('depositBank') ? document.getElementById('depositBank').value : "";
+        const note = document.getElementById('depositNote') ? document.getElementById('depositNote').value : "";
         if (!username || !amount || amount <= 0) {
             showCustomAlert("Vui lòng nhập số tiền muốn nạp.");
             return;
         }
-        await requestDeposit(username, amount, bank_code);
+        await requestDeposit(username, amount, bank_code, note);
     });
 }
 if(document.getElementById('withdrawBtn')) {
@@ -283,11 +300,12 @@ if(document.getElementById('withdrawBtn')) {
         const username = localStorage.getItem('current_user');
         const amount = parseInt(document.getElementById('withdrawAmount').value);
         const bank_code = document.getElementById('withdrawBank') ? document.getElementById('withdrawBank').value : "";
+        const note = document.getElementById('withdrawNote') ? document.getElementById('withdrawNote').value : "";
         if (!username || !amount || amount <= 0) {
             showCustomAlert("Vui lòng nhập số tiền muốn rút.");
             return;
         }
-        await requestWithdraw(username, amount, bank_code);
+        await requestWithdraw(username, amount, bank_code, note);
     });
 }
 
