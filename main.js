@@ -1,4 +1,4 @@
-// =================== CONFIG API ====================
+/ =================== CONFIG API ====================
 const API_BASE = "https://01112006.vercel.app/api"; // ĐỔI thành domain thật của bạn!
 const API_USER = `${API_BASE}/user`;
 const API_REQUEST = `${API_BASE}/request`;
@@ -111,6 +111,7 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
 
     try {
         const response = await fetch(API_USER, {
+
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -183,6 +184,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
         }
         try {
             await fetch(API_USER, {
+
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, ip })
@@ -218,17 +220,25 @@ async function updateCurrentBets() {
         let totalTai = 0;
         let totalXiu = 0;
         if (data && Array.isArray(data.bets)) {
-            data.bets.forEach(bet => {
-                // bet = [timestamp, username, side, amount]
-                const amount = parseInt(bet[3]);
-                if (!isNaN(amount)) {
-                    if (bet[2] === 'tai') {
-                        totalTai += amount;
-                    } else if (bet[2] === 'xiu') {
-                        totalXiu += amount;
+            // Nếu bets là mảng object (sheet.best mới) thì sửa lại
+            if (typeof data.bets[0] === "object" && !Array.isArray(data.bets[0])) {
+                data.bets.forEach(bet => {
+                    const amount = parseInt(bet.amount);
+                    if (!isNaN(amount)) {
+                        if (bet.side === 'tai') totalTai += amount;
+                        if (bet.side === 'xiu') totalXiu += amount;
                     }
-                }
-            });
+                });
+            } else {
+                data.bets.forEach(bet => {
+                    // bet = [timestamp, username, side, amount]
+                    const amount = parseInt(bet[3]);
+                    if (!isNaN(amount)) {
+                        if (bet[2] === 'tai') totalTai += amount;
+                        if (bet[2] === 'xiu') totalXiu += amount;
+                    }
+                });
+            }
         }
         document.getElementById('tx-total-tai').textContent = totalTai.toLocaleString();
         document.getElementById('tx-total-xiu').textContent = totalXiu.toLocaleString();
@@ -419,6 +429,7 @@ async function finishTXRound(dice) {
             }
 
             await fetch(API_USER, {
+
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, balance: balance })
@@ -516,6 +527,7 @@ document.getElementById('placeBetBtn').addEventListener('click', async () => {
         // Trừ tiền user
         balance -= betAmount;
         await fetch(API_USER, {
+
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, balance: balance })
@@ -524,6 +536,7 @@ document.getElementById('placeBetBtn').addEventListener('click', async () => {
 
         // Ghi cược lên server
         await fetch(API_BET, {
+
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, side: betSide, amount: betAmount })
@@ -639,4 +652,232 @@ async function loadUserInfo(username) {
 // Hàm hiển thị panel admin nếu user là admin
 function showAdminPanel() {
     document.getElementById("adminPanel").style.display = "block";
+}
+Ẩn văn bản được trích dẫn
+
+On Mon, Jun 2, 2025 at 2:40 PM Tấn Huy Đinh <dinhtanhuy547@gmail.com> wrote:
+const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // sheet.best URL của bạn
+const BET_SHEET = "bets"; // (sheet.best sẽ map sheetname nếu bạn dùng nhiều sheet, nếu chỉ 1 sheet thì bỏ qua)
+
+// Helper: lấy tất cả cược
+async function getAllBets() {
+  // Nếu dùng nhiều sheet, thêm &sheet=BET_SHEET vào URL
+  const res = await fetch(`${SHEET_BEST_URL}?sheet=${BET_SHEET}`);
+  if (!res.ok) throw new Error("Không kết nối được sheet.best");
+  return await res.json();
+}
+
+export default async function handler(req, res) {
+  if (req.method === 'POST') {
+    try {
+      const { username, side, amount } = req.body;
+      if (!username || !side || !amount) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      const createRes = await fetch(`${SHEET_BEST_URL}?sheet=${BET_SHEET}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timestamp: Date.now(),
+          username,
+          side,
+          amount
+        })
+      });
+      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
+      return res.status(201).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+  if (req.method === 'GET') {
+    try {
+      const bets = await getAllBets();
+      // bets là mảng object {timestamp, username, side, amount}
+      return res.json({ bets: bets || [] });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+  if (req.method === 'DELETE') {
+    try {
+      // Xóa tất cả cược: sheet.best không hỗ trợ xóa hết, sẽ PATCH hết amount=0 hoặc xóa từng dòng
+      // Ở đây sẽ PATCH tất cả cược về amount=0 như một cách "reset"
+      // Nếu bạn muốn reset thật thì nên tạo sheet mới hoặc ghi đè header
+      // (Hoặc xóa hết từng dòng bằng DELETE từng username, nhưng không tối ưu)
+      return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt, hãy xóa thủ công trên Google Sheet hoặc ghi đè bằng tay." });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+  res.status(405).end();
+}
+
+On Mon, Jun 2, 2025 at 2:39 PM Tấn Huy Đinh <dinhtanhuy547@gmail.com> wrote:
+const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // sheet.best URL của bạn
+const REQUEST_SHEET = "requests";
+
+async function getAllRequests() {
+  const res = await fetch(`${SHEET_BEST_URL}?sheet=${REQUEST_SHEET}`);
+  if (!res.ok) throw new Error("Không kết nối được sheet.best");
+  return await res.json();
+}
+
+export default async function handler(req, res) {
+  if (req.method === 'POST') {
+    try {
+      const { username, type, amount, status, bank_code } = req.body;
+      if (!username || !type || !amount || !status) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      const createRes = await fetch(`${SHEET_BEST_URL}?sheet=${REQUEST_SHEET}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timestamp: Date.now(),
+          username,
+          type,
+          amount,
+          status,
+          bank_code: bank_code || ""
+        })
+      });
+      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
+      return res.status(201).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+  if (req.method === 'GET') {
+    try {
+      const requests = await getAllRequests();
+      // requests là array object {timestamp, username, ...}
+      return res.json({ requests: requests || [] });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+  res.status(405).end();
+}
+
+On Mon, Jun 2, 2025 at 2:36 PM Tấn Huy Đinh <dinhtanhuy547@gmail.com> wrote:
+const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // Đổi bằng URL sheet.best của bạn
+
+// Helper: Lấy toàn bộ user
+async function getAllUsers() {
+  const res = await fetch(SHEET_BEST_URL);
+  if (!res.ok) throw new Error("Không kết nối được sheet.best");
+  return await res.json();
+}
+
+// Helper: Lấy user theo username
+async function getUser(username) {
+  const res = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}`);
+  if (!res.ok) return null;
+  const users = await res.json();
+  return (Array.isArray(users) && users.length > 0) ? users[0] : null;
+}
+
+export default async function handler(req, res) {
+  // Đăng ký user
+  if (req.method === "POST") {
+    try {
+      const { username, passwordHash, ip } = req.body;
+      if (!username || !passwordHash) {
+        return res.status(400).json({ error: "Thiếu username hoặc password." });
+      }
+      const exists = await getUser(username);
+      if (exists) {
+        return res.status(400).json({ error: "Username đã tồn tại." });
+      }
+      // Tạo user mới với balance mặc định là 10000
+      const createRes = await fetch(SHEET_BEST_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          passwordHash,
+          balance: 10000,
+          ip,
+          role: "user"
+        })
+      });
+      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
+      return res.status(201).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // Lấy thông tin user hoặc toàn bộ user
+  if (req.method === "GET") {
+    try {
+      const { username, all } = req.query;
+      if (all) {
+        const users = await getAllUsers();
+        // KHÔNG trả về passwordHash khi trả về danh sách
+        return res.status(200).json(users.map(u => ({
+          username: u.username,
+          balance: u.balance,
+          ip: u.ip,
+          role: u.role || "user"
+        })));
+      }
+      if (!username) {
+        return res.status(400).json({ error: "Thiếu username." });
+      }
+      const user = await getUser(username);
+      if (!user) {
+        return res.status(404).json({ error: "Không tìm thấy user." });
+      }
+      return res.status(200).json({
+        username: user.username,
+        passwordHash: user.passwordHash, // Để FE kiểm tra password khi login
+        balance: user.balance,
+        ip: user.ip,
+        role: user.role || "user"
+      });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // Cập nhật số dư user (và IP nếu có)
+  if (req.method === "PATCH") {
+    try {
+      const { username, balance, ip } = req.body;
+      if (!username || typeof balance === "undefined") {
+        return res.status(400).json({ error: "Thiếu username hoặc balance." });
+      }
+      // sheet.best update bằng PATCH với filter username
+      const updateRes = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ip ? { balance, ip } : { balance })
+      });
+      if (!updateRes.ok) throw new Error("Không update được user");
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // Xóa user
+  if (req.method === "DELETE") {
+    try {
+      const { username } = req.query;
+      if (!username) {
+        return res.status(400).json({ error: "Thiếu username." });
+      }
+      const delRes = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}`, {
+        method: 'DELETE'
+      });
+      if (!delRes.ok) throw new Error("Không xóa được user");
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  res.status(405).json({ error: "Phương thức không hỗ trợ." });
 }
