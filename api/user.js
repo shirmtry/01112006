@@ -12,7 +12,7 @@ async function getUser(username) {
   const res = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}`);
   if (!res.ok) return null;
   const users = await res.json();
-  return users && users.length > 0 ? users[0] : null;
+  return (Array.isArray(users) && users.length > 0) ? users[0] : null;
 }
 
 export default async function handler(req, res) {
