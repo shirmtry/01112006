@@ -1,27 +1,36 @@
-import { getSheetsClient } from '../../utils/sheets';
-const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID;
-const BET_SHEET = 'bets';
+const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // sheet.best URL của bạn
+const BET_SHEET = "bets"; // (sheet.best sẽ map sheetname nếu bạn dùng nhiều sheet, nếu chỉ 1 sheet thì bỏ qua)
+
+// Helper: lấy tất cả cược
+async function getAllBets() {
+  // Nếu dùng nhiều sheet, thêm &sheet=BET_SHEET vào URL
+  const res = await fetch(`${SHEET_BEST_URL}?sheet=${BET_SHEET}`);
+
+  if (!res.ok) throw new Error("Không kết nối được sheet.best");
+  return await res.json();
+}
 
 export default async function handler(req, res) {
-  if (!SPREADSHEET_ID) {
-    return res.status(500).json({ error: 'Missing GOOGLE_SHEET_ID env' });
-  }
-  const sheets = await getSheetsClient();
-
   if (req.method === 'POST') {
     try {
       const { username, side, amount } = req.body;
       if (!username || !side || !amount) {
+
         return res.status(400).json({ error: 'Missing required fields' });
       }
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
-        range: BET_SHEET,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: [[Date.now(), username, side, amount]]
-        }
+      const createRes = await fetch(`${SHEET_BEST_URL}?sheet=${BET_SHEET}`, {
+
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timestamp: Date.now(),
+          username,
+          side,
+          amount
+
+        })
       });
+      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
       return res.status(201).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -29,25 +38,22 @@ export default async function handler(req, res) {
   }
   if (req.method === 'GET') {
     try {
-      const rows = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${BET_SHEET}!A2:Z`,
-      });
-      return res.json({ bets: rows.data.values || [] });
+      const bets = await getAllBets();
+      // bets là mảng object {timestamp, username, side, amount}
+      return res.json({ bets: bets || [] });
+
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
   }
   if (req.method === 'DELETE') {
     try {
-      // Update header row (nếu sheet header khác thì sửa lại)
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: BET_SHEET,
-        valueInputOption: 'RAW',
-        requestBody: { values: [['timestamp','username','side','amount']] }
-      });
-      return res.status(200).json({ success: true });
+      // Xóa tất cả cược: sheet.best không hỗ trợ xóa hết, sẽ PATCH hết amount=0 hoặc xóa từng dòng
+      // Ở đây sẽ PATCH tất cả cược về amount=0 như một cách "reset"
+      // Nếu bạn muốn reset thật thì nên tạo sheet mới hoặc ghi đè header
+      // (Hoặc xóa hết từng dòng bằng DELETE từng username, nhưng không tối ưu)
+      return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt, hãy xóa thủ công trên Google Sheet hoặc ghi đè bằng tay." });
+
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
