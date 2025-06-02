@@ -1,5 +1,5 @@
 // =================== CONFIG API ====================
-const API_BASE = "https://cobac.vercel.app/api"; // ĐỔI thành domain thật của bạn!
+const API_BASE = "https://01112006.vercel.app/api"; // ĐỔI thành domain thật của bạn!
 const API_USER = `${API_BASE}/user`;
 const API_REQUEST = `${API_BASE}/request`;
 const API_BET = `${API_BASE}/bet`;
