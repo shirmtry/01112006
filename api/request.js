@@ -1,44 +1,43 @@
-const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
-const REQUEST_SHEET = "requests";
-
-async function getAllRequests() {
-  const res = await fetch(`${SHEET_BEST_URL}?sheet=${REQUEST_SHEET}`);
-  if (!res.ok) throw new Error("Không kết nối được sheet.best");
-  return await res.json();
-}
+const SHEET_BEST_URL = "https://sheet.best/api/sheets/1_fvM8R8nmyY0WeYdJwBveYRxoFp3P6nIsa862X5GlCQ/tabs/requests";
 
 export default async function handler(req, res) {
+  // Nạp/rút (tạo request mới)
   if (req.method === 'POST') {
     try {
-      const { username, type, amount, status, bank_code } = req.body;
-      if (!username || !type || !amount || !status) {
-        return res.status(400).json({ error: 'Missing required fields' });
+      const { username, type, amount, bank_code, note } = req.body;
+      if (!username || !type || !amount || isNaN(amount)) {
+        return res.status(400).json({ error: 'Thiếu thông tin hoặc số tiền không hợp lệ.' });
       }
-      const createRes = await fetch(`${SHEET_BEST_URL}?sheet=${REQUEST_SHEET}`, {
+      // Tạo request, mặc định status là "pending"
+      const response = await fetch(SHEET_BEST_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          timestamp: Date.now(),
+          timestamp: new Date().toISOString(),
           username,
           type,
           amount,
-          status,
-          bank_code: bank_code || ""
+          status: 'pending',
+          bank_code: bank_code || "",
+          note: note || ""
         })
       });
-      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
+      if (!response.ok) throw new Error("Không ghi được lên sheet.best");
       return res.status(201).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
   }
+  // Lấy danh sách request (cho admin)
   if (req.method === 'GET') {
     try {
-      const requests = await getAllRequests();
-      return res.json({ requests: requests || [] });
+      const response = await fetch(SHEET_BEST_URL);
+      if (!response.ok) throw new Error("Không lấy được danh sách requests");
+      const data = await response.json();
+      return res.status(200).json({ data });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
   }
-  res.status(405).end();
+  res.status(405).json({ error: "Phương thức không hỗ trợ." });
 }
