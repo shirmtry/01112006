@@ -229,6 +229,21 @@ async function requestWithdraw(username, amount) {
             alert("Vui lòng nhập số tiền rút hợp lệ (>= 1000)!");
             return;
         }
+        const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
+        const user = await res.json();
+        if (!user || user.balance === undefined) {
+            alert("Không lấy được thông tin tài khoản.");
+            return;
+        }
+        if (parseInt(user.balance) < amount) {
+            alert("Số dư không đủ để rút!");
+            return;
+        }
+        await fetch(API_USERS, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, balance: parseInt(user.balance) - amount })
+        });
         await fetch(API_REQUESTS, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -238,10 +253,11 @@ async function requestWithdraw(username, amount) {
                 amount,
                 bank_code: code,
                 note: "",
-                status: "pending"
+                status: "done"
             })
         });
-        alert(`Gửi yêu cầu rút tiền thành công!\nMã giao dịch: ${code}\nVui lòng chờ admin xác nhận.`);
+        alert(`Rút tiền thành công!\nMã giao dịch: ${code}\nSố dư đã được cập nhật.`);
+        await loadUserInfo(username);
         await loadUserHistory(username);
     } catch (e) {
         alert("Lỗi kết nối máy chủ rút tiền.");
