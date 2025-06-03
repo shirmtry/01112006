@@ -1,4 +1,3 @@
-/ --- Cấu hình ---
 const SHEET_BEST_URL = process.env.SHEETBEST_API || "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
 
 // Helper: Lấy toàn bộ user
@@ -8,14 +7,18 @@ async function getAllUsers() {
   return await res.json();
 }
 
-// Helper: Lấy user theo username (so sánh chính xác, không bị lỗi dòng rỗng)
+// Helper: Lấy user theo username (so sánh không phân biệt hoa thường, bỏ dòng rỗng)
 async function getUser(username) {
-  const res = await fetch(`${SHEET_BEST_URL}?username=${encodeURIComponent(username)}&t=${Date.now()}`);
+  const url = `${SHEET_BEST_URL}?username=${encodeURIComponent(username)}&t=${Date.now()}`;
+  const res = await fetch(url);
   if (!res.ok) return null;
   const users = await res.json();
   // Trả về đúng user có username trùng (không bị dòng rỗng/hỏng, không phân biệt hoa thường)
   return (Array.isArray(users) && users.length > 0)
-    ? users.find(u => u.username && u.username.toLowerCase() === username.toLowerCase()) || null
+    ? users.find(u =>
+        typeof u.username === "string" &&
+        u.username.trim().toLowerCase() === username.trim().toLowerCase()
+      ) || null
     : null;
 }
 
@@ -28,7 +31,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Thiếu username hoặc password." });
       }
       const exists = await getUser(username);
-      if (exists && exists.username && exists.username.toLowerCase() === username.toLowerCase()) {
+      if (exists) {
         return res.status(400).json({ error: "Username đã tồn tại." });
       }
       // Tạo user mới với balance mặc định là 10000
