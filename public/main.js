@@ -1,10 +1,11 @@
-// =================== CONFIG API ====================
+// =================== CONFIG ====================
 const API_BASE = "https://01112006.vercel.app/api";
 const API_USER = `${API_BASE}/user`;
 const API_REQUEST = `${API_BASE}/request`;
-const API_BET = `${API_BASE}/bet`;
-
 const ADMIN_USERNAMES = ["admin"];
+
+// Sheet.best endpoint (THAY BẰNG LINK CỦA BẠN)
+const SHEETBEST_API = "YOUR_SHEETBEST_URL"; // Ví dụ: "https://sheet.best/api/sheets/xxxxxx"
 
 // =================== HASH UTILITY ==================
 function hashString(str) {
@@ -27,24 +28,59 @@ function generateCaptcha(prefix = '') {
     }
     const display = document.getElementById(prefix + 'captchaDisplay');
     if (display) display.textContent = captcha;
-    // Nếu là đăng ký thì cập nhật reg_captchaDisplay luôn
     if (prefix === 'reg_') {
         const regDisplay = document.getElementById('reg_captchaDisplay');
         if (regDisplay) regDisplay.textContent = captcha;
     }
 }
-
-// ========== INIT CAPTCHA ==========
 document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
-    // Cho phép click vào captcha để đổi mã mới
+    // Click vào captcha đổi mã
     const loginCaptcha = document.getElementById('captchaDisplay');
     if (loginCaptcha) loginCaptcha.onclick = function() { generateCaptcha(); }
     const regCaptcha = document.getElementById('reg_captchaDisplay');
     if (regCaptcha) regCaptcha.onclick = function() { generateCaptcha('reg_'); }
 });
 
-// =================== UI EVENT ======================
+// =================== ENABLE/DISABLE DEPOSIT/WITHDRAW BUTTONS ================
+function enableDepositWithdrawButtons() {
+    if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = false;
+    if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = false;
+}
+function disableDepositWithdrawButtons() {
+    if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = true;
+    if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = true;
+}
+
+// =================== TẠO CODE GIAO DỊCH ===================
+function randomCode(length = 7) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for(let i=0; i<length; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+// ===== GỬI LỊCH SỬ GIAO DỊCH LÊN SHEET.BEST ==========
+async function saveHistoryToSheet({username, amount, code, type}) {
+    const payload = {
+        username,
+        amount,
+        code,
+        type,
+        time: new Date().toLocaleString('vi-VN', { hour12: false })
+    };
+    try {
+        await fetch(SHEETBEST_API, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+    } catch (e) {}
+}
+
+// =================== ĐĂNG KÝ/ĐĂNG NHẬP ===================
 document.getElementById('showRegisterLink').addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById("loginForm").style.display = "none";
@@ -65,23 +101,11 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
     document.getElementById('captcha').value = '';
-    if (typeof tx_interval !== "undefined" && tx_interval) clearInterval(tx_interval);
-    if (typeof tx_settleTimeout !== "undefined" && tx_settleTimeout) clearTimeout(tx_settleTimeout);
-    if (typeof betSyncInterval !== "undefined" && betSyncInterval) clearInterval(betSyncInterval);
     disableDepositWithdrawButtons();
+    document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
 });
 
-// =================== ENABLE/DISABLE DEPOSIT/WITHDRAW BUTTONS ================
-function enableDepositWithdrawButtons() {
-    if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = false;
-    if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = false;
-}
-function disableDepositWithdrawButtons() {
-    if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = true;
-    if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = true;
-}
-
-// =================== ĐĂNG KÝ/ĐĂNG NHẬP ===================
+// Đăng ký
 document.getElementById('registerBtn').addEventListener('click', async () => {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value;
@@ -108,10 +132,6 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
         if (check.ok) {
             const found = await check.json();
             if (Array.isArray(found) && found.some(u => u.username && u.username.toLowerCase() === username.toLowerCase())) {
-                showCustomAlert('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!');
-                return;
-            }
-            if (found && found.username && found.username.toLowerCase() === username.toLowerCase()) {
                 showCustomAlert('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!');
                 return;
             }
@@ -142,14 +162,7 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
             localStorage.setItem('is_admin', ADMIN_USERNAMES.includes(username) ? '1' : '');
             document.getElementById("registerForm").style.display = "none";
             document.getElementById("mainContent").style.display = "block";
-            await loadUserInfo(username);
-            if (ADMIN_USERNAMES.includes(username)) showAdminPanel();
-            if(typeof startGame === "function") startGame();
-            document.getElementById('reg_username').value = '';
-            document.getElementById('reg_password').value = '';
-            document.getElementById('reg_password2').value = '';
-            document.getElementById('reg_captcha').value = '';
-            enableDepositWithdrawButtons();
+            await afterLoginOrRegister();
         } else {
             showCustomAlert(data.error || 'Lỗi đăng ký, thử lại sau!');
         }
@@ -158,6 +171,7 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
     }
 });
 
+// Đăng nhập
 document.getElementById('loginBtn').addEventListener('click', async () => {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
@@ -206,15 +220,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
 
-        await loadUserInfo(username);
-        if (ADMIN_USERNAMES.includes(username)) {
-            showAdminPanel();
-        }
-        if(typeof startGame === "function") startGame();
-        document.getElementById('username').value = '';
-        document.getElementById('password').value = '';
-        document.getElementById('captcha').value = '';
-        enableDepositWithdrawButtons();
+        await afterLoginOrRegister();
     } catch (e) {
         showCustomAlert('Lỗi đăng nhập, thử lại sau!');
     }
@@ -222,6 +228,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 
 // =================== NẠP/RÚT TIỀN ===================
 async function requestDeposit(username, amount) {
+    const code = randomCode();
     try {
         if (!username) {
             showCustomAlert("Bạn chưa đăng nhập!");
@@ -238,7 +245,8 @@ async function requestDeposit(username, amount) {
                 username,
                 type: "deposit",
                 amount,
-                status: "pending"
+                status: "pending",
+                code
             })
         });
         const data = await res.json();
@@ -254,7 +262,9 @@ async function requestDeposit(username, amount) {
                 });
                 document.getElementById("userBalance").textContent = balance.toLocaleString();
             } catch (e) {}
-            showCustomAlert("Gửi yêu cầu nạp tiền thành công! Số dư đã cộng tạm thời. Vui lòng chờ admin xác nhận.");
+            await saveHistoryToSheet({ username, amount, code, type: "deposit" });
+            showCustomAlert(`Gửi yêu cầu nạp tiền thành công!\nMã giao dịch: ${code}\nSố dư đã cộng tạm thời. Vui lòng chờ admin xác nhận.`);
+            await loadUserHistory(username);
         } else {
             showCustomAlert(data.error || "Lỗi gửi yêu cầu nạp tiền");
         }
@@ -264,6 +274,7 @@ async function requestDeposit(username, amount) {
 }
 
 async function requestWithdraw(username, amount) {
+    const code = randomCode();
     try {
         if (!username) {
             showCustomAlert("Bạn chưa đăng nhập!");
@@ -280,7 +291,8 @@ async function requestWithdraw(username, amount) {
                 username,
                 type: "withdraw",
                 amount,
-                status: "pending"
+                status: "pending",
+                code
             })
         });
         const data = await res.json();
@@ -296,7 +308,9 @@ async function requestWithdraw(username, amount) {
                 });
                 document.getElementById("userBalance").textContent = balance.toLocaleString();
             } catch (e) {}
-            showCustomAlert("Gửi yêu cầu rút tiền thành công! Số dư đã trừ tạm thời. Vui lòng chờ admin xác nhận.");
+            await saveHistoryToSheet({ username, amount, code, type: "withdraw" });
+            showCustomAlert(`Gửi yêu cầu rút tiền thành công!\nMã giao dịch: ${code}\nSố dư đã trừ tạm thời. Vui lòng chờ admin xác nhận.`);
+            await loadUserHistory(username);
         } else {
             showCustomAlert(data.error || "Lỗi gửi yêu cầu rút tiền");
         }
@@ -311,7 +325,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (currentUser) enableDepositWithdrawButtons();
     else disableDepositWithdrawButtons();
 
-    // Nạp tiền
     const depositBtn = document.getElementById('depositBtn');
     if (depositBtn) {
         depositBtn.addEventListener('click', function() {
@@ -321,7 +334,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Rút tiền
     const withdrawBtn = document.getElementById('withdrawBtn');
     if (withdrawBtn) {
         withdrawBtn.addEventListener('click', function() {
@@ -331,6 +343,34 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// =================== LỊCH SỬ GIAO DỊCH USER ===================
+async function loadUserHistory(username) {
+    if (!SHEETBEST_API || SHEETBEST_API === "YOUR_SHEETBEST_URL") {
+        document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa cấu hình sheet.best API</td></tr>';
+        return;
+    }
+    try {
+        const res = await fetch(`${SHEETBEST_API}?username=${encodeURIComponent(username)}`);
+        const history = await res.json();
+        let html = '';
+        if (history && history.length > 0) {
+            history.reverse().forEach(item => {
+                html += `<tr>
+                    <td>${item.time || ""}</td>
+                    <td>${item.type === "deposit" ? "Nạp" : (item.type === "withdraw" ? "Rút" : item.type)}</td>
+                    <td>${item.amount}</td>
+                    <td>${item.code}</td>
+                </tr>`;
+            });
+        } else {
+            html = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+        }
+        document.getElementById("userHistoryTableBody").innerHTML = html;
+    } catch (e) {
+        document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Không tải được dữ liệu</td></tr>';
+    }
+}
 
 // ====== BỔ SUNG HÀM showCustomAlert, loadUserInfo, showAdminPanel ======
 function showCustomAlert(msg) {
@@ -360,15 +400,211 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (currentUser) {
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
-        await loadUserInfo(currentUser);
-        if (localStorage.getItem('is_admin') === '1') {
-            showAdminPanel();
-        }
-        if(typeof startGame === "function") startGame();
-        enableDepositWithdrawButtons();
+        await afterLoginOrRegister();
     } else {
         document.getElementById('loginForm').style.display = 'block';
         document.getElementById('mainContent').style.display = 'none';
         disableDepositWithdrawButtons();
+        document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+    }
+});
+
+// ===== Sau đăng nhập/đăng ký xong =====
+async function afterLoginOrRegister() {
+    const username = localStorage.getItem('current_user');
+    await loadUserInfo(username);
+    enableDepositWithdrawButtons();
+    await loadUserHistory(username);
+    startGameTX();
+}
+
+
+// =================== GAME TÀI XỈU ===================
+// --- Cấu hình game ---
+const BET_AMOUNTS = [1000, 10000, 100000, 500000, 5000000, 10000000, 50000000]; // 1k, 10k, 100k, 500k, 5m, 10m, 50m
+const GAME_BET_TIME = 30; // giây mỗi phiên
+
+let gameState = {
+    round: 1,
+    timeLeft: GAME_BET_TIME,
+    isBetting: true,
+    bets: { tai: 0, xiu: 0 },   // tổng cược cả bàn
+    userBets: { tai: 0, xiu: 0 }, // chỉ user này
+    dice: [1, 1, 1],
+    history: [], // lịch sử {round, dice, sum, result}
+    userHistory: [] // lịch sử cược user
+};
+let gameInterval = null;
+
+// --- Random xúc xắc 1-6 ---
+function randomDice() {
+    return Math.floor(Math.random() * 6) + 1;
+}
+
+// --- Hiển thị xúc xắc ---
+function renderDice(diceArr) {
+    for (let i = 1; i <= 3; i++) {
+        document.getElementById(`dice${i}`).textContent = diceArr[i-1];
+    }
+}
+
+// --- Hiển thị tổng cược bàn và cược người dùng ---
+function renderBets() {
+    document.getElementById('tx-total-tai').textContent = gameState.bets.tai.toLocaleString();
+    document.getElementById('tx-total-xiu').textContent = gameState.bets.xiu.toLocaleString();
+}
+
+// --- Hiện các nút tắt đặt cược ---
+function renderQuickBets() {
+    const group = document.getElementById('quickBetGroup');
+    group.innerHTML = BET_AMOUNTS.map(v =>
+        `<button type="button" class="quick-bet-btn" data-amount="${v}">${v >= 1000000 ? (v/1000000)+'m' : (v/1000)+'k'}</button>`
+    ).join('');
+    // Gán sự kiện click
+    group.querySelectorAll('.quick-bet-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.getElementById('betAmount').value = btn.dataset.amount;
+        };
+    });
+}
+
+// --- Reset cược user mỗi phiên ---
+function resetUserBets() {
+    gameState.userBets = { tai: 0, xiu: 0 };
+    document.getElementById('betTai').disabled = false;
+    document.getElementById('betXiu').disabled = false;
+}
+
+// --- Đặt cược ---
+function placeBet(side) {
+    if (!gameState.isBetting) {
+        showCustomAlert('Hết thời gian đặt cược!');
+        return;
+    }
+    const amount = parseInt(document.getElementById('betAmount').value);
+    if (!amount || isNaN(amount) || amount < 1000) {
+        showCustomAlert('Số tiền cược không hợp lệ!');
+        return;
+    }
+    if (amount > parseInt(document.getElementById("userBalance").textContent.replace(/,/g,''))) {
+        showCustomAlert('Không đủ số dư để cược!');
+        return;
+    }
+    gameState.userBets[side] += amount;
+    gameState.bets[side] += amount;
+    document.getElementById('betTai').disabled = true;
+    document.getElementById('betXiu').disabled = true;
+    renderBets();
+    showCustomAlert(`Đã đặt cược ${side.toUpperCase()} ${amount.toLocaleString()}VNĐ cho phiên #${gameState.round}`);
+}
+
+// --- Chạy đếm ngược/bắt đầu phiên ---
+function startGameTX() {
+    renderQuickBets();
+    resetUserBets();
+    gameState.timeLeft = GAME_BET_TIME;
+    gameState.isBetting = true;
+    document.getElementById('countdown').textContent = gameState.timeLeft;
+    renderBets();
+    renderDice(['?','?','?']);
+    if (gameInterval) clearInterval(gameInterval);
+    gameInterval = setInterval(() => {
+        gameState.timeLeft -= 1;
+        document.getElementById('countdown').textContent = gameState.timeLeft;
+        if (gameState.timeLeft === 0) {
+            clearInterval(gameInterval);
+            settleGameTX();
+        }
+    }, 1000);
+}
+
+// --- Quay xúc xắc, tính kết quả, cập nhật lịch sử ---
+function settleGameTX() {
+    gameState.isBetting = false;
+    // Xúc xắc
+    let dice = [randomDice(), randomDice(), randomDice()];
+    let sum = dice[0] + dice[1] + dice[2];
+    let result = sum >= 11 && sum <= 17 ? 'tai' : 'xiu';
+    gameState.dice = dice;
+    renderDice(dice);
+
+    // Lưu lịch sử bàn
+    gameState.history.unshift({
+        round: gameState.round,
+        dice: [...dice],
+        sum,
+        result
+    });
+    if (gameState.history.length > 20) gameState.history.length = 20;
+    renderHistory();
+
+    // Lưu lịch sử cược user
+    if (gameState.userBets.tai > 0 || gameState.userBets.xiu > 0) {
+        let win = 0;
+        let lose = 0;
+        if (gameState.userBets[result] > 0) win += gameState.userBets[result];
+        if (gameState.userBets[result === 'tai' ? 'xiu' : 'tai'] > 0) lose += gameState.userBets[result === 'tai' ? 'xiu' : 'tai'];
+        let time = new Date().toLocaleString('vi-VN', { hour12: false });
+        gameState.userHistory.unshift({
+            time,
+            bet: {...gameState.userBets},
+            result: result.toUpperCase(),
+            sum,
+            win,
+            lose
+        });
+        if (gameState.userHistory.length > 20) gameState.userHistory.length = 20;
+        renderUserBetHistory();
+        // Cập nhật số dư
+        let balance = parseInt(document.getElementById("userBalance").textContent.replace(/,/g,''));
+        balance = balance + win - lose;
+        document.getElementById("userBalance").textContent = balance.toLocaleString();
+    }
+    setTimeout(() => {
+        gameState.round++;
+        gameState.bets = { tai: 0, xiu: 0 };
+        startGameTX();
+    }, 5000);
+}
+
+// --- Hiển thị lịch sử bàn ---
+function renderHistory() {
+    let html = '';
+    gameState.history.forEach(h => {
+        html += `<div>Phiên ${h.round}: [${h.dice.join(', ')}] - Tổng:${h.sum} - ${h.result.toUpperCase()}</div>`;
+    });
+    document.getElementById('tx-stat-list').innerHTML = html;
+}
+
+// --- Hiển thị lịch sử cược user ---
+function renderUserBetHistory() {
+    let html = '';
+    gameState.userHistory.forEach(h => {
+        html += `<tr>
+            <td>${h.time}</td>
+            <td>${h.bet.tai > 0 ? 'Tài' : 'Xỉu'}</td>
+            <td>${h.result}</td>
+            <td>${h.sum}</td>
+            <td>${h.win > 0 ? '+ ' + h.win.toLocaleString() : (h.lose>0 ? '- ' + h.lose.toLocaleString() : '0')}</td>
+        </tr>`;
+    });
+    document.querySelector('#userStatsTable tbody').innerHTML = html;
+}
+
+// --- Sự kiện đặt cược ---
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('betTai'))
+        document.getElementById('betTai').onclick = function() { placeBet('tai'); };
+    if (document.getElementById('betXiu'))
+        document.getElementById('betXiu').onclick = function() { placeBet('xiu'); };
+    if (document.getElementById('placeBetBtn'))
+        document.getElementById('placeBetBtn').onclick = function() {
+            // Show/hide quick bet group
+            let group = document.getElementById('quickBetGroup');
+            group.style.display = (group.style.display === 'block' ? 'none' : 'block');
+        };
+    // Khởi động game khi đăng nhập
+    if (document.getElementById('tx-game-container')) {
+        startGameTX();
     }
 });
