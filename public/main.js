@@ -1,4 +1,4 @@
-// =================== CONFIG ====================
+/ =================== CONFIG ====================
 const SHEETBEST_API = "https://api.sheetbest.com/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
 const SHEETBEST_USERS = SHEETBEST_API + "/users";
 const SHEETBEST_REQUESTS = SHEETBEST_API + "/requests";
@@ -164,10 +164,22 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 
     try {
         const res = await fetch(`${SHEETBEST_USERS}?username=${encodeURIComponent(username)}`);
+        if (!res.ok) {
+            showCustomAlert('Lỗi máy chủ, thử lại sau!');
+            return;
+        }
         const users = await res.json();
-        const user = users && users.find(u => u.username === username);
-        if (!user || user.passwordHash !== hashString(password)) {
-            showCustomAlert('Tài khoản hoặc mật khẩu không đúng!');
+        if (!Array.isArray(users) || users.length === 0) {
+            showCustomAlert('Tài khoản không tồn tại!');
+            return;
+        }
+        const user = users.find(u => (u.username || '').toLowerCase() === username.toLowerCase());
+        if (!user || !user.passwordHash) {
+            showCustomAlert('Tài khoản không tồn tại hoặc có dữ liệu lỗi!');
+            return;
+        }
+        if (user.passwordHash != hashString(password)) {
+            showCustomAlert('Mật khẩu không đúng!');
             return;
         }
         localStorage.setItem('current_user', username);
@@ -318,9 +330,8 @@ async function loadUserHistory(username) {
 
 // =================== GAME TÀI XỈU ===================
 
-// --- Cấu hình game ---
 const BET_AMOUNTS = [1000, 10000, 100000, 500000, 5000000, 10000000, 50000000];
-const GAME_BET_TIME = 30; // giây mỗi phiên
+const GAME_BET_TIME = 30;
 
 let gameState = {
     round: 1,
@@ -334,25 +345,21 @@ let gameState = {
 };
 let gameInterval = null;
 
-// --- Random xúc xắc 1-6 ---
 function randomDice() {
     return Math.floor(Math.random() * 6) + 1;
 }
 
-// --- Hiển thị xúc xắc ---
 function renderDice(diceArr) {
     for (let i = 1; i <= 3; i++) {
         document.getElementById(`dice${i}`).textContent = diceArr[i-1];
     }
 }
 
-// --- Hiển thị tổng cược bàn và cược người dùng ---
 function renderBets() {
     document.getElementById('tx-total-tai').textContent = gameState.bets.tai.toLocaleString();
     document.getElementById('tx-total-xiu').textContent = gameState.bets.xiu.toLocaleString();
 }
 
-// --- Hiện các nút tắt đặt cược ---
 function renderQuickBets() {
     const group = document.getElementById('quickBetGroup');
     group.innerHTML = BET_AMOUNTS.map(v =>
@@ -365,14 +372,12 @@ function renderQuickBets() {
     });
 }
 
-// --- Reset cược user mỗi phiên ---
 function resetUserBets() {
     gameState.userBets = { tai: 0, xiu: 0 };
     document.getElementById('betTai').disabled = false;
     document.getElementById('betXiu').disabled = false;
 }
 
-// --- Đặt cược ---
 function placeBet(side) {
     if (!gameState.isBetting) {
         showCustomAlert('Hết thời gian đặt cược!');
@@ -395,7 +400,6 @@ function placeBet(side) {
     showCustomAlert(`Đã đặt cược ${side.toUpperCase()} ${amount.toLocaleString()} VNĐ cho phiên #${gameState.round}`);
 }
 
-// --- Chạy đếm ngược/bắt đầu phiên ---
 function startGameTX() {
     renderQuickBets();
     resetUserBets();
@@ -415,7 +419,6 @@ function startGameTX() {
     }, 1000);
 }
 
-// --- Quay xúc xắc, tính kết quả, cập nhật lịch sử ---
 function settleGameTX() {
     gameState.isBetting = false;
     let dice = [randomDice(), randomDice(), randomDice()];
@@ -434,8 +437,7 @@ function settleGameTX() {
     renderHistory();
 
     if (gameState.userBets.tai > 0 || gameState.userBets.xiu > 0) {
-        let win = 0;
-        let lose = 0;
+        let win = 0, lose = 0;
         if (gameState.userBets[result] > 0) win += gameState.userBets[result];
         if (gameState.userBets[result === 'tai' ? 'xiu' : 'tai'] > 0) lose += gameState.userBets[result === 'tai' ? 'xiu' : 'tai'];
         let time = new Date().toLocaleString('vi-VN', { hour12: false });
@@ -460,7 +462,6 @@ function settleGameTX() {
     }, 5000);
 }
 
-// --- Hiển thị lịch sử bàn ---
 function renderHistory() {
     let html = '';
     gameState.history.forEach(h => {
@@ -469,7 +470,6 @@ function renderHistory() {
     document.getElementById('tx-stat-list').innerHTML = html;
 }
 
-// --- Hiển thị lịch sử cược user ---
 function renderUserBetHistory() {
     let html = '';
     gameState.userHistory.forEach(h => {
@@ -484,7 +484,6 @@ function renderUserBetHistory() {
     document.querySelector('#userStatsTable tbody').innerHTML = html;
 }
 
-// --- Sự kiện đặt cược ---
 document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('betTai'))
         document.getElementById('betTai').onclick = function() { placeBet('tai'); };
@@ -522,7 +521,6 @@ function showAdminPanel() {
     document.getElementById("adminPanel").style.display = "block";
 }
 
-// ========== INIT ON LOAD ==========
 document.addEventListener('DOMContentLoaded', async () => {
     const currentUser = localStorage.getItem('current_user');
     if (currentUser) {
