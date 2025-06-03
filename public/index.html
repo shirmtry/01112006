@@ -145,5 +145,23 @@
         </div>
     </div>
     <script src="main.js"></script>
+    <script>
+    // ==== BẢO ĐẢM NÚT NẠP/RÚT KHẢ DỤNG KHI ĐĂNG NHẬP ====
+    // Chạy sau main.js nếu cần fallback
+    document.addEventListener('DOMContentLoaded', function() {
+        function toggleDepositWithdrawBtns(isEnable) {
+            var depositBtn = document.getElementById('depositBtn');
+            var withdrawBtn = document.getElementById('withdrawBtn');
+            if(depositBtn) depositBtn.disabled = !isEnable;
+            if(withdrawBtn) withdrawBtn.disabled = !isEnable;
+        }
+        // Lúc đầu nếu đã login thì enable luôn
+        try {
+            var currentUser = localStorage.getItem('current_user');
+            if (currentUser) toggleDepositWithdrawBtns(true);
+            else toggleDepositWithdrawBtns(false);
+        } catch(e){toggleDepositWithdrawBtns(false);}
+    });
+    </script>
 </body>
 </html>
