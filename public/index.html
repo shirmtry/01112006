@@ -31,13 +31,19 @@
             position: relative;
             overflow: hidden;
         }
+        .bank-action-btns button:disabled {
+            opacity: 0.35;
+            background: #23304c !important;
+            color: #eee !important;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
         .bank-action-btns button:hover,
         .bank-action-btns button:focus {
             background: linear-gradient(135deg, #a044ff 0%, #6a3093 100%);
             color: #FFD700;
             box-shadow: 0 6px 24px #6a309366;
         }
-
         .bank-page {
             width: 100vw;
             min-height: 100vh;
@@ -143,6 +149,28 @@
             user-select: all;
             box-shadow: 0 2px 10px #6a309366;
         }
+        .deposit-admin-info {
+            background: #222c4a;
+            border-radius: 9px;
+            padding: 12px 18px 12px 18px;
+            color: #FFD700;
+            margin-bottom: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 2px 10px #a044ff22;
+            border: 1.5px solid #6a309355;
+            word-break: break-all;
+        }
+        .deposit-code-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .deposit-code-row .bank-code-txt {
+            margin-left: 0;
+        }
         @media (max-width: 480px) {
             .bank-form-ct { min-width: 98vw; padding: 16px 4vw; }
         }
@@ -212,67 +240,131 @@
     </div>
     <div id="mainContent" style="display:none;">
         <div class="tx-main-container" id="tx-main-container">
-            <div id="tx-game-ui"></div>
-            <div class="tx-header">
-                <div class="tx-title">TÀI XỈU <span class="tx-md5">MD5</span></div>
-            </div>
-            <div style="text-align:center; margin-bottom:10px;">
-                <h2 style="margin-bottom: 2px;">Chào mừng, <span id="userNameDisplay"></span>!</h2>
-                <p style="margin:0 0 6px 0;">Số dư: <span id="userBalance">0</span> VNĐ</p>
-                <button id="logoutBtn">Đăng xuất</button>
-            </div>
-            <div class="bank-section">
-                <div class="bank-action-btns">
-                    <button id="openDepositPageBtn" disabled>Nạp tiền</button>
-                    <button id="openWithdrawPageBtn" disabled>Rút tiền</button>
+            <!-- PHẦN GAME LUÔN Ở TRÊN -->
+            <div id="tx-game-ui">
+                <!-- Chèn code game tài xỉu MD5 tại đây (phần HTML game) -->
+                <div class="tx-board">
+                    <div class="tx-left" id="tx-tai-select">
+                        <div class="tx-bet-title tai">TÀI</div>
+                        <div class="tx-bet-total" id="tx-tai-total">0</div>
+                    </div>
+                    <div class="tx-center">
+                        <div class="tx-round-id">#<span id="tx-round-id">1</span></div>
+                        <div class="tx-dial-wrap">
+                            <div class="tx-dial" id="tx-dial">
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-tick"></div>
+                                <div class="tx-dial-num" id="tx-dial-num">12</div>
+                            </div>
+                        </div>
+                        <div class="tx-time">⏰ <span id="tx-timer">30</span>s</div>
+                    </div>
+                    <div class="tx-right" id="tx-xiu-select">
+                        <div class="tx-bet-title xiu">XỈU</div>
+                        <div class="tx-bet-total" id="tx-xiu-total">0</div>
+                    </div>
+                </div>
+                <div class="tx-bet-row">
+                    <input type="number" id="tx-bet-amount" min="0" value="0" class="tx-bet-input" placeholder="0">
+                    <button class="tx-bet-btn" id="tx-bet-btn">CƯỢC</button>
+                    <button class="tx-nan-btn" id="tx-nan-btn">NỆN</button>
+                </div>
+                <div class="tx-quick-row">
+                    <button class="tx-quick-btn" data-amount="1000">1K</button>
+                    <button class="tx-quick-btn" data-amount="5000">5K</button>
+                    <button class="tx-quick-btn" data-amount="10000">10K</button>
+                    <button class="tx-quick-btn" data-amount="50000">50K</button>
+                    <button class="tx-quick-btn" data-amount="100000">100K</button>
+                    <button class="tx-quick-btn" data-amount="500000">500K</button>
+                    <button class="tx-quick-btn" data-amount="1000000">1M</button>
+                    <button class="tx-quick-btn" data-amount="10000000">10M</button>
+                </div>
+                <div class="tx-result-row">
+                    <div class="tx-result-label">KẾT QUẢ</div>
+                    <div class="tx-result-list" id="tx-result-list"></div>
+                    <button id="tx-copy-btn" class="tx-copy-btn">COPY</button>
                 </div>
             </div>
-            <div class="user-history-section">
-                <h3>Lịch sử Nạp/Rút của bạn</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Thời gian</th>
-                            <th>Loại</th>
-                            <th>Số tiền</th>
-                            <th>Mã giao dịch</th>
-                        </tr>
-                    </thead>
-                    <tbody id="userHistoryTableBody">
-                        <tr><td colspan="4">Chưa có dữ liệu</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="user-stats-section">
-                <h3>Lịch sử cược của bạn</h3>
-                <table id="userStatsTable">
-                    <thead>
-                        <tr>
-                            <th>Thời gian</th>
-                            <th>Cược</th>
-                            <th>Kết quả</th>
-                            <th>Tổng</th>
-                            <th>Thắng/Thua</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div id="adminPanel" style="display:none;">
-                <h3>Bảng điều khiển Admin</h3>
-                <h4>Yêu cầu nạp tiền chờ xác nhận:</h4>
-                <ul id="adminRequests" class="admin-list"></ul>
+            <!-- PHẦN CHÍNH DƯỚI GAME -->
+            <div class="main-below-game">
+                <div class="tx-header">
+                    <div class="tx-title">TÀI XỈU <span class="tx-md5">MD5</span></div>
+                </div>
+                <div style="text-align:center; margin-bottom:10px;">
+                    <h2 style="margin-bottom: 2px;">Chào mừng, <span id="userNameDisplay"></span>!</h2>
+                    <p style="margin:0 0 6px 0;">Số dư: <span id="userBalance">0</span> VNĐ</p>
+                    <button id="logoutBtn">Đăng xuất</button>
+                </div>
+                <div class="bank-section">
+                    <div class="bank-action-btns">
+                        <button id="openDepositPageBtn" disabled>Nạp tiền</button>
+                        <button id="openWithdrawPageBtn" disabled>Rút tiền</button>
+                    </div>
+                </div>
+                <div class="user-history-section">
+                    <h3>Lịch sử Nạp/Rút của bạn</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Loại</th>
+                                <th>Số tiền</th>
+                                <th>Mã giao dịch</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userHistoryTableBody">
+                            <tr><td colspan="4">Chưa có dữ liệu</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="user-stats-section">
+                    <h3>Lịch sử cược của bạn</h3>
+                    <table id="userStatsTable">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Cược</th>
+                                <th>Kết quả</th>
+                                <th>Tổng</th>
+                                <th>Thắng/Thua</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div id="adminPanel" style="display:none;">
+                    <h3>Bảng điều khiển Admin</h3>
+                    <h4>Yêu cầu nạp tiền chờ xác nhận:</h4>
+                    <ul id="adminRequests" class="admin-list"></ul>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Trang form nạp tiền -->
     <div id="depositPage" class="bank-page">
         <form class="bank-form-ct" autocomplete="off" onsubmit="return false;">
             <button type="button" class="bank-exit-btn" id="depositPageCloseBtn">&times;</button>
             <h3>Nạp tiền vào game</h3>
+            <div class="deposit-admin-info">
+                <div><b>Số tài khoản admin:</b> <span id="adminBankNumber">123456789</span></div>
+                <div><b>Chủ tài khoản:</b> <span id="adminBankHolder">Nguyễn Văn Admin</span></div>
+                <div><b>Ngân hàng:</b> <span id="adminBankName">MB Bank</span></div>
+                <div style="color:#fff;font-size:14px;margin-top:7px;">* Chuyển đúng số tiền và ghi rõ mã giao dịch bên dưới vào nội dung chuyển khoản!</div>
+            </div>
             <label for="depositPageAmount">Số tiền nạp:</label>
             <input type="number" id="depositPageAmount" autocomplete="off" placeholder="Nhập số tiền" min="1000" step="1000">
-            <div class="bank-form-btnrow">
+            <div class="bank-form-btnrow deposit-code-row">
                 <button type="button" id="depositPageGenCodeBtn" disabled>Tạo mã chuyển khoản</button>
                 <span class="bank-code-txt" id="depositPageCodeTxt"></span>
             </div>
@@ -282,6 +374,7 @@
         </form>
     </div>
 
+    <!-- Trang form rút tiền -->
     <div id="withdrawPage" class="bank-page">
         <form class="bank-form-ct" autocomplete="off" onsubmit="return false;">
             <button type="button" class="bank-exit-btn" id="withdrawPageCloseBtn">&times;</button>
