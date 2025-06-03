@@ -6,99 +6,145 @@
     <title>2k6 mãi đỉnh</title>
     <link rel="stylesheet" href="ok1.css">
     <style>
-        .bank-action-btns { text-align:center; margin-bottom:10px; }
+        .bank-action-btns {
+            text-align: center;
+            margin-bottom: 10px;
+            gap: 16px;
+            display: flex;
+            justify-content: center;
+        }
         .bank-action-btns button {
-            padding: 10px 30px;
-            margin: 0 12px;
-            border-radius: 8px;
-            border: none;
-            background: #29395d;
+            min-width: 130px;
+            border-radius: 12px;
+            font-size: 19px;
+            font-weight: 700;
+            padding: 16px 0;
+            margin: 0 8px;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
             color: #fff;
-            font-size: 17px;
-            font-weight: 600;
+            border: none;
+            box-shadow: 0 4px 18px #0002;
+            letter-spacing: 1px;
+            outline: none;
             cursor: pointer;
-            transition: background 0.2s, color 0.2s;
+            transition: all 0.15s;
+            position: relative;
+            overflow: hidden;
         }
-        .bank-action-btns button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .bank-action-btns button:hover,
+        .bank-action-btns button:focus {
+            background: linear-gradient(135deg, #a044ff 0%, #6a3093 100%);
+            color: #FFD700;
+            box-shadow: 0 6px 24px #6a309366;
         }
+
         .bank-page {
-            width: 100vw; min-height: 100vh;
-            background: #17203b;
-            position: fixed; left: 0; top: 0; z-index: 22;
+            width: 100vw;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at center, #1a1a2e 55%, #16213e 100%);
+            position: fixed;
+            left: 0; top: 0; z-index: 1000;
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
+            animation: fadeIn 0.3s;
         }
         .bank-form-ct {
             background: #1c2948;
-            margin-top: 50px;
-            padding: 32px 38px 28px 38px;
-            border-radius: 16px;
-            box-shadow: 0 4px 30px #0004;
+            margin-top: 70px;
+            padding: 34px 40px 31px 40px;
+            border-radius: 18px;
+            box-shadow: 0 6px 40px #0005;
             color: #fff;
-            min-width: 330px;
-            max-width: 95vw;
+            min-width: 350px;
+            max-width: 96vw;
+            position: relative;
         }
         .bank-form-ct h3 {
-            font-size: 23px;
-            margin-bottom: 18px;
-            color: #fff;
+            font-size: 27px;
+            margin-bottom: 19px;
+            color: #FFD700;
+            text-shadow: 0 2px 10px #a044ff44;
+            font-weight: 900;
         }
-        .bank-form-ct label { font-weight: bold; margin-bottom: 4px; display:block; }
+        .bank-form-ct label {
+            font-weight: 700;
+            margin-bottom: 5px;
+            display: block;
+            color: #FFD700;
+            font-size: 16px;
+        }
         .bank-form-ct input[type="text"], .bank-form-ct input[type="number"] {
-            padding: 7px 9px;
-            border-radius: 6px;
-            border: 1px solid #2c3955;
-            margin-bottom: 14px;
+            padding: 10px 13px;
+            border-radius: 7px;
+            border: 2px solid #a044ff33;
+            margin-bottom: 15px;
             width: 100%;
             font-size: 16px;
             background: #243154;
-            color: #fff;
+            color: #FFD700;
+            font-weight: 600;
+            outline: none;
+            transition: border 0.2s;
             box-sizing: border-box;
         }
-        .bank-form-ct .bank-form-btnrow {
+        .bank-form-ct input[type="text"]:focus,
+        .bank-form-ct input[type="number"]:focus {
+            border-color: #FFD700;
+        }
+        .bank-form-btnrow {
             margin-top: 10px;
-            display:flex;
-            gap: 7px;
+            display: flex;
+            gap: 8px;
             flex-wrap: wrap;
+            align-items: center;
         }
         .bank-form-ct button {
-            padding: 8px 12px;
-            border-radius: 6px;
+            padding: 11px 0;
+            border-radius: 7px;
             border: none;
-            background: #29395d;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
             color: #fff;
             font-size: 16px;
             font-weight: 600;
-            margin-right: 5px;
+            min-width: 125px;
             cursor: pointer;
-            transition: background 0.2s, color 0.2s;
+            transition: all 0.2s;
         }
-        .bank-form-ct button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .bank-form-ct button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #44495d;
+        }
         .bank-form-ct .bank-exit-btn {
             background: transparent;
-            color: #fff;
-            font-size: 26px;
-            font-weight: bold;
+            color: #FFD700;
+            font-size: 32px;
             border: none;
-            padding: 0 14px;
-            float: right;
-            cursor: pointer;
+            padding: 0 15px;
             position: absolute;
-            top: 18px;
-            right: 24px;
-            line-height: 1;
+            top: 10px;
+            right: 15px;
+            cursor: pointer;
+            transition: color 0.2s;
+            font-weight: 700;
         }
-        .bank-form-ct .bank-exit-btn:hover { color: #f00; }
-        .bank-form-ct .bank-code-txt {
-            font-size: 15px; color: #aad; margin-left:7px;
+        .bank-form-ct .bank-exit-btn:hover { color: #F44336; }
+        .bank-code-txt {
+            font-size: 16px;
+            color: #fff;
+            font-weight: 700;
+            margin-left: 10px;
+            background: #6a3093;
+            padding: 6px 14px;
+            border-radius: 7px;
+            letter-spacing: 2px;
             user-select: all;
+            box-shadow: 0 2px 10px #6a309366;
         }
-        @media (max-width: 600px) {
-            .bank-form-ct { min-width: 90vw; padding: 15px; }
+        @media (max-width: 480px) {
+            .bank-form-ct { min-width: 98vw; padding: 16px 4vw; }
         }
     </style>
     <script>
@@ -166,6 +212,7 @@
     </div>
     <div id="mainContent" style="display:none;">
         <div class="tx-main-container" id="tx-main-container">
+            <div id="tx-game-ui"></div>
             <div class="tx-header">
                 <div class="tx-title">TÀI XỈU <span class="tx-md5">MD5</span></div>
             </div>
@@ -195,9 +242,6 @@
                         <tr><td colspan="4">Chưa có dữ liệu</td></tr>
                     </tbody>
                 </table>
-            </div>
-            <div id="tx-game-ui">
-                <!-- giữ nguyên game code -->
             </div>
             <div class="user-stats-section">
                 <h3>Lịch sử cược của bạn</h3>
