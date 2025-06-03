@@ -81,12 +81,8 @@
             <div class="bank-section">
                 <h3>Nạp/Rút tiền</h3>
                 <div>
-                    <input type="number" id="depositAmount" placeholder="Số tiền nạp" min="1000" step="1000">
-                    <button id="depositBtn" disabled>Nạp tiền</button>
-                </div>
-                <div>
-                    <input type="number" id="withdrawAmount" placeholder="Số tiền rút" min="1000" step="1000">
-                    <button id="withdrawBtn" disabled>Rút tiền</button>
+                    <button id="openDepositModalBtn" disabled>Nạp tiền</button>
+                    <button id="openWithdrawModalBtn" disabled>Rút tiền</button>
                 </div>
             </div>
             <div class="user-history-section">
@@ -178,6 +174,44 @@
                 <h4>Yêu cầu nạp tiền chờ xác nhận:</h4>
                 <ul id="adminRequests" class="admin-list"></ul>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal Nạp Tiền -->
+    <div id="depositModal" style="display:none;" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" id="depositModalClose">&times;</span>
+            <h3>Nạp tiền vào game</h3>
+            <div style="margin-bottom:8px;">
+                <label>Số tiền nạp:</label>
+                <input type="number" id="modalDepositAmount" placeholder="Nhập số tiền" min="1000" step="1000">
+            </div>
+            <div style="margin-bottom:8px;">
+                <button id="generateDepositCodeBtn">Tạo mã chuyển khoản</button>
+                <span id="depositCodeDisplay"></span>
+            </div>
+            <button id="submitDepositBtn">Nạp tiền</button>
+        </div>
+    </div>
+
+    <!-- Modal Rút Tiền -->
+    <div id="withdrawModal" style="display:none;" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" id="withdrawModalClose">&times;</span>
+            <h3>Rút tiền khỏi game</h3>
+            <div style="margin-bottom:8px;">
+                <label>Ngân hàng:</label>
+                <input type="text" id="modalBankName" placeholder="Tên ngân hàng">
+            </div>
+            <div style="margin-bottom:8px;">
+                <label>Số tài khoản:</label>
+                <input type="text" id="modalBankAccount" placeholder="Số tài khoản">
+            </div>
+            <div style="margin-bottom:8px;">
+                <label>Số tiền rút:</label>
+                <input type="number" id="modalWithdrawAmount" placeholder="Số tiền muốn rút" min="1000" step="1000">
+            </div>
+            <button id="submitWithdrawBtn">Gửi yêu cầu rút</button>
         </div>
     </div>
     <script src="main.js"></script>
