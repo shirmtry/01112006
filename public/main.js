@@ -42,12 +42,12 @@ function randomCode(length = 7) {
 }
 
 function enableDepositWithdrawButtons() {
-    if(document.getElementById('openDepositModalBtn')) document.getElementById('openDepositModalBtn').disabled = false;
-    if(document.getElementById('openWithdrawModalBtn')) document.getElementById('openWithdrawModalBtn').disabled = false;
+    if(document.getElementById('openDepositPageBtn')) document.getElementById('openDepositPageBtn').disabled = false;
+    if(document.getElementById('openWithdrawPageBtn')) document.getElementById('openWithdrawPageBtn').disabled = false;
 }
 function disableDepositWithdrawButtons() {
-    if(document.getElementById('openDepositModalBtn')) document.getElementById('openDepositModalBtn').disabled = true;
-    if(document.getElementById('openWithdrawModalBtn')) document.getElementById('openWithdrawModalBtn').disabled = true;
+    if(document.getElementById('openDepositPageBtn')) document.getElementById('openDepositPageBtn').disabled = true;
+    if(document.getElementById('openWithdrawPageBtn')) document.getElementById('openWithdrawPageBtn').disabled = true;
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -76,34 +76,41 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
     });
 
-    if (document.getElementById('openDepositModalBtn')) {
-        document.getElementById('openDepositModalBtn').onclick = function() {
-            document.getElementById('depositModal').style.display = 'block';
-            document.getElementById('modalDepositAmount').value = '';
-            document.getElementById('depositCodeDisplay').textContent = '';
+    // Giao diện trang chuyển - nạp/rút
+    // Nạp tiền
+    const openDepositBtn = document.getElementById('openDepositPageBtn');
+    const depositPage = document.getElementById('depositPage');
+    if (openDepositBtn && depositPage) {
+        openDepositBtn.onclick = function() {
+            depositPage.style.display = "flex";
+            document.getElementById('depositPageAmount').value = "";
+            document.getElementById('depositPageCodeTxt').textContent = "";
+            document.getElementById('depositPageGenCodeBtn').disabled = true;
+            document.getElementById('depositPageSubmitBtn').disabled = true;
         };
-    }
-    if (document.getElementById('depositModalClose')) {
-        document.getElementById('depositModalClose').onclick = function() {
-            document.getElementById('depositModal').style.display = 'none';
+        document.getElementById('depositPageCloseBtn').onclick = function() {
+            depositPage.style.display = "none";
         };
-    }
-    if (document.getElementById('generateDepositCodeBtn')) {
-        document.getElementById('generateDepositCodeBtn').onclick = function() {
-            document.getElementById('depositCodeDisplay').textContent = randomCode();
+        document.getElementById('depositPageAmount').oninput = function() {
+            const v = parseInt(this.value, 10);
+            document.getElementById('depositPageGenCodeBtn').disabled = !(v && v >= 1000);
+            document.getElementById('depositPageCodeTxt').textContent = "";
+            document.getElementById('depositPageSubmitBtn').disabled = true;
         };
-    }
-    if (document.getElementById('submitDepositBtn')) {
-        document.getElementById('submitDepositBtn').onclick = async function() {
+        document.getElementById('depositPageGenCodeBtn').onclick = function() {
+            document.getElementById('depositPageCodeTxt').textContent = randomCode();
+            document.getElementById('depositPageSubmitBtn').disabled = false;
+        };
+        document.getElementById('depositPageSubmitBtn').onclick = async function() {
             const username = localStorage.getItem('current_user');
-            const amount = parseInt(document.getElementById('modalDepositAmount').value);
-            const code = document.getElementById('depositCodeDisplay').textContent;
+            const amount = parseInt(document.getElementById('depositPageAmount').value);
+            const code = document.getElementById('depositPageCodeTxt').textContent;
             if (!amount || isNaN(amount) || amount < 1000) {
                 alert("Vui lòng nhập số tiền nạp hợp lệ (>= 1000)!");
                 return;
             }
             if (!code) {
-                alert("Vui lòng nhấn tạo mã chuyển khoản trước!");
+                alert("Vui lòng tạo mã chuyển khoản!");
                 return;
             }
             await fetch(API_REQUESTS, {
@@ -118,41 +125,49 @@ document.addEventListener("DOMContentLoaded", function() {
                     status: "pending"
                 })
             });
-            alert("Gửi yêu cầu nạp tiền thành công! Vui lòng chờ xác nhận từ admin.");
-            document.getElementById('depositModal').style.display = 'none';
+            alert("Gửi yêu cầu nạp tiền thành công! Vui lòng chờ admin xác nhận.");
+            depositPage.style.display = "none";
             await loadUserHistory(username);
         };
     }
-    if (document.getElementById('openWithdrawModalBtn')) {
-        document.getElementById('openWithdrawModalBtn').onclick = function() {
-            document.getElementById('withdrawModal').style.display = 'block';
-            document.getElementById('modalBankName').value = '';
-            document.getElementById('modalBankAccount').value = '';
-            document.getElementById('modalWithdrawAmount').value = '';
+    // Rút tiền
+    const openWithdrawBtn = document.getElementById('openWithdrawPageBtn');
+    const withdrawPage = document.getElementById('withdrawPage');
+    if (openWithdrawBtn && withdrawPage) {
+        openWithdrawBtn.onclick = function() {
+            withdrawPage.style.display = "flex";
+            document.getElementById('withdrawPageBank').value = "";
+            document.getElementById('withdrawPageAccount').value = "";
+            document.getElementById('withdrawPageHolder').value = "";
+            document.getElementById('withdrawPageAmount').value = "";
+            document.getElementById('withdrawPageSubmitBtn').disabled = true;
         };
-    }
-    if (document.getElementById('withdrawModalClose')) {
-        document.getElementById('withdrawModalClose').onclick = function() {
-            document.getElementById('withdrawModal').style.display = 'none';
+        document.getElementById('withdrawPageCloseBtn').onclick = function() {
+            withdrawPage.style.display = "none";
         };
-    }
-    if (document.getElementById('submitWithdrawBtn')) {
-        document.getElementById('submitWithdrawBtn').onclick = async function() {
+        const withdrawInputs = ['withdrawPageBank', 'withdrawPageAccount', 'withdrawPageHolder', 'withdrawPageAmount'];
+        withdrawInputs.forEach(id => {
+            document.getElementById(id).oninput = function() {
+                const bank = document.getElementById('withdrawPageBank').value.trim();
+                const acc = document.getElementById('withdrawPageAccount').value.trim();
+                const holder = document.getElementById('withdrawPageHolder').value.trim();
+                const amount = parseInt(document.getElementById('withdrawPageAmount').value);
+                document.getElementById('withdrawPageSubmitBtn').disabled = !(bank && acc && holder && amount && amount >= 1000);
+            };
+        });
+        document.getElementById('withdrawPageSubmitBtn').onclick = async function() {
             const username = localStorage.getItem('current_user');
-            const bank = document.getElementById('modalBankName').value.trim();
-            const account = document.getElementById('modalBankAccount').value.trim();
-            const amount = parseInt(document.getElementById('modalWithdrawAmount').value);
-            if (!bank || !account || !amount || isNaN(amount) || amount < 1000) {
+            const bank = document.getElementById('withdrawPageBank').value.trim();
+            const acc = document.getElementById('withdrawPageAccount').value.trim();
+            const holder = document.getElementById('withdrawPageHolder').value.trim();
+            const amount = parseInt(document.getElementById('withdrawPageAmount').value);
+            if (!bank || !acc || !holder || !amount || isNaN(amount) || amount < 1000) {
                 alert("Vui lòng nhập đầy đủ thông tin và số tiền hợp lệ (>= 1000)!");
                 return;
             }
             const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
             const user = await res.json();
-            if (!user || user.balance === undefined) {
-                alert("Không lấy được thông tin tài khoản.");
-                return;
-            }
-            if (parseInt(user.balance) < amount) {
+            if (!user || user.balance === undefined || parseInt(user.balance) < amount) {
                 alert("Số dư không đủ để rút!");
                 return;
             }
@@ -169,16 +184,17 @@ document.addEventListener("DOMContentLoaded", function() {
                     type: "withdraw",
                     amount,
                     bank_code: "",
-                    note: `Ngân hàng: ${bank}, Số TK: ${account}`,
+                    note: `Ngân hàng: ${bank}, Số TK: ${acc}, Chủ TK: ${holder}`,
                     status: "pending"
                 })
             });
             alert("Gửi yêu cầu rút tiền thành công! Số dư đã trừ, vui lòng chờ xác nhận từ admin.");
-            document.getElementById('withdrawModal').style.display = 'none';
+            withdrawPage.style.display = "none";
             await loadUserInfo(username);
             await loadUserHistory(username);
         };
     }
+
     const currentUser = localStorage.getItem('current_user');
     if (currentUser) enableDepositWithdrawButtons();
     else disableDepositWithdrawButtons();
