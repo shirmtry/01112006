@@ -77,11 +77,11 @@
         <div class="bank-section">
             <h3>Nạp/Rút tiền</h3>
             <div>
-                <input type="number" id="depositAmount" placeholder="Số tiền nạp">
+                <input type="number" id="depositAmount" placeholder="Số tiền nạp" min="1000" step="1000">
                 <button id="depositBtn" disabled>Nạp tiền</button>
             </div>
             <div>
-                <input type="number" id="withdrawAmount" placeholder="Số tiền rút">
+                <input type="number" id="withdrawAmount" placeholder="Số tiền rút" min="1000" step="1000">
                 <button id="withdrawBtn" disabled>Rút tiền</button>
             </div>
         </div>
