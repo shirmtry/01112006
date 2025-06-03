@@ -16,41 +16,6 @@
         return false;
       });
     </script>
-    <style>
-      .captcha-inputcode {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-      }
-      .captcha-img {
-          display: inline-block;
-          min-width: 70px;
-          padding: 6px 12px;
-          background: #f2f2f2;
-          border-radius: 5px;
-          border: 1px solid #e0e0e0;
-          font-weight: bold;
-          letter-spacing: 2px;
-          cursor: pointer;
-          user-select: none;
-          text-align: center;
-      }
-      .user-history-section {
-          margin-top: 32px;
-      }
-      .user-history-section table {
-          margin: 0 auto;
-          border-collapse: collapse;
-      }
-      .user-history-section th, .user-history-section td {
-          border: 1px solid #cccccc;
-          padding: 6px 12px;
-          text-align: center;
-      }
-      .user-history-section th {
-          background: #f8f8f8;
-      }
-    </style>
 </head>
 <body>
     <!-- Đăng nhập/Đăng ký -->
@@ -137,9 +102,57 @@
                 </tbody>
             </table>
         </div>
+        <!-- GAME TÀI XỈU -->
         <div id="tx-game-container">
-            <h2>GAME TÀI XỈU</h2>
-            <!-- ... phần game giữ nguyên ... -->
+            <h2 style="margin-top:32px;">GAME TÀI XỈU</h2>
+            <div class="taixiu-board">
+                <div class="taixiu-col">
+                    <div class="taixiu-title tai">TÀI</div>
+                    <div class="taixiu-total" id="tx-total-tai">0</div>
+                </div>
+                <div class="taixiu-col">
+                    <div class="taixiu-title xiu">XỈU</div>
+                    <div class="taixiu-total" id="tx-total-xiu">0</div>
+                </div>
+            </div>
+            <div class="taixiu-timer">
+                <span id="tx-timer-label">Thời gian cược:</span> <span class="tx-timer" id="countdown">30</span> giây
+            </div>
+            <div class="dice-row">
+                <div class="dice-box" id="dice1">?</div>
+                <div class="dice-box" id="dice2">?</div>
+                <div class="dice-box" id="dice3">?</div>
+            </div>
+            <div class="tx-betting-area">
+                <div class="bet-options">
+                    <button type="button" class="bet-btn" id="betTai">Cược Tài</button>
+                    <button type="button" class="bet-btn xiu" id="betXiu">Cược Xỉu</button>
+                </div>
+                <div class="bet-amount-controls">
+                    <input type="number" id="betAmount" placeholder="Số tiền cược" value="1000" min="1000" step="1000">
+                    <button type="button" class="place-bet-btn" id="placeBetBtn">Đặt cược</button>
+                </div>
+                <div class="quick-bet-group" id="quickBetGroup"></div>
+            </div>
+            <div class="taixiu-stat">
+                <span class="tx-stat-title">Lịch sử phiên:</span>
+                <div class="tx-stat-content" id="tx-stat-list"></div>
+            </div>
+            <div class="user-stats-section">
+                <h3>Lịch sử cược của bạn</h3>
+                <table id="userStatsTable">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Cược</th>
+                            <th>Kết quả</th>
+                            <th>Tổng</th>
+                            <th>Thắng/Thua</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
         <div id="adminPanel" style="display:none;">
             <h3>Bảng điều khiển Admin</h3>
