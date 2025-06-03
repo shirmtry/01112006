@@ -1,68 +1,50 @@
-const SHEETBEST_API =
-  process.env.SHEETBEST_API_BET ||
-  process.env.SHEETBEST_API ||
-  "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
-const BET_SHEET = "bets";
+const { getSheetsClient, SHEET_ID } = require('./_googleSheet');
+const SHEET_NAME = 'bets';
 
-async function getAllBets() {
-  const url = BET_SHEET
-    ? `${SHEETBEST_API}?sheet=${encodeURIComponent(BET_SHEET)}`
-    : SHEETBEST_API;
-  const headers = process.env.SHEETBEST_KEY
-    ? { Authorization: `Bearer ${process.env.SHEETBEST_KEY}` }
-    : undefined;
-  const res = await fetch(url, { headers });
-  if (!res.ok) throw new Error("Không kết nối được sheet.best");
-  return await res.json();
+async function getBets() {
+  const sheets = await getSheetsClient();
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: SHEET_NAME,
+  });
+  const [header, ...rows] = resp.data.values || [];
+  return rows.map(row => {
+    const bet = {};
+    header.forEach((key, i) => bet[key] = row[i]);
+    return bet;
+  });
 }
 
-export default async function handler(req, res) {
-  const headers = process.env.SHEETBEST_KEY
-    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SHEETBEST_KEY}` }
-    : { 'Content-Type': 'application/json' };
+async function appendBet(data) {
+  const sheets = await getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: SHEET_NAME,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [data] }
+  });
+}
 
+module.exports = async (req, res) => {
   try {
+    if (req.method === 'GET') {
+      const bets = await getBets();
+      return res.status(200).json(bets);
+    }
     if (req.method === 'POST') {
-      const { round, username, side, amount, result, sum, time } = req.body;
-      if (!username || !side || !amount) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-      const dataToWrite = {
-        timestamp: Date.now(),
+      const { username, side, amount } = req.body;
+      if (!username || !side || !amount) return res.status(400).json({ error: "Thiếu thông tin." });
+      await appendBet([
+        Date.now(),
         username,
         side,
-        amount,
-      };
-      if (round !== undefined) dataToWrite.round = round;
-      if (result !== undefined) dataToWrite.result = result;
-      if (sum !== undefined) dataToWrite.sum = sum;
-      dataToWrite.time = time || new Date().toISOString();
-
-      const url = BET_SHEET
-        ? `${SHEETBEST_API}?sheet=${encodeURIComponent(BET_SHEET)}`
-        : SHEETBEST_API;
-
-      const createRes = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(dataToWrite)
-      });
-      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
-      const data = await createRes.json();
-      return res.status(201).json({ success: true, data });
+        amount
+      ]);
+      return res.status(201).json({ success: true });
     }
-
-    if (req.method === 'GET') {
-      const bets = await getAllBets();
-      return res.json({ bets: bets || [] });
-    }
-
-    if (req.method === 'DELETE') {
-      return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt, hãy xóa thủ công trên Google Sheet hoặc ghi đè bằng tay." });
-    }
-
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: "Phương thức không hỗ trợ." });
   } catch (e) {
-    return res.status(500).json({ error: e.message || "Lỗi máy chủ" });
+    res.status(500).json({ error: e.message });
   }
-}
+};
