@@ -1,4 +1,5 @@
-const SHEET_BEST_URL = "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // sheet.best URL của bạn
+/ --- Cấu hình ---
+const SHEET_BEST_URL = process.env.SHEETBEST_API || "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
 
 // Helper: Lấy toàn bộ user
 async function getAllUsers() {
