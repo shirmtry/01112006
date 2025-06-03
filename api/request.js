@@ -3,14 +3,12 @@ const SHEET_BEST_URL = process.env.SHEETBEST_API_REQUEST ||
   "https://sheet.best/api/sheets/1_fvM8R8nmyY0WeYdJwBveYRxoFp3P6nIsa862X5GlCQ/tabs/requests";
 
 export default async function handler(req, res) {
-  // Nạp/rút (tạo request mới)
   if (req.method === 'POST') {
     try {
       const { username, type, amount, bank_code, note } = req.body;
       if (!username || !type || !amount || isNaN(amount)) {
         return res.status(400).json({ error: 'Thiếu thông tin hoặc số tiền không hợp lệ.' });
       }
-      // Tạo request, mặc định status là "pending"
       const response = await fetch(SHEET_BEST_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -31,7 +29,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // Lấy danh sách request (cho admin)
   if (req.method === 'GET') {
     try {
       const response = await fetch(SHEET_BEST_URL);
@@ -43,9 +40,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Xóa request (nếu cần)
   if (req.method === 'DELETE') {
-    // Sheet.best không hỗ trợ xóa hàng loạt, chỉ trả về thông báo
     return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt. Hãy xóa thủ công trên Google Sheet nếu cần." });
   }
 
