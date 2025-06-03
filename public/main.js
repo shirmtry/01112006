@@ -65,32 +65,35 @@ function randomCode(length = 7) {
 }
 
 // =================== ĐĂNG KÝ/ĐĂNG NHẬP ===================
-document.getElementById('showRegisterLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    document.getElementById("loginForm").style.display = "none";
-    document.getElementById("registerForm").style.display = "block";
-    generateCaptcha('reg_');
-});
-document.getElementById('showLoginLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    document.getElementById("loginForm").style.display = "block";
-    document.getElementById("registerForm").style.display = "none";
-    generateCaptcha();
-});
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('current_user');
-    localStorage.removeItem('is_admin');
-    document.getElementById("mainContent").style.display = "none";
-    document.getElementById("loginForm").style.display = "block";
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
-    document.getElementById('captcha').value = '';
-    disableDepositWithdrawButtons();
-    document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+document.addEventListener('DOMContentLoaded', () => {
+    // Chỉ thêm event nếu có form đăng nhập/đăng ký
+    if (document.getElementById('showRegisterLink')) document.getElementById('showRegisterLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("registerForm").style.display = "block";
+        generateCaptcha('reg_');
+    });
+    if (document.getElementById('showLoginLink')) document.getElementById('showLoginLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById("loginForm").style.display = "block";
+        document.getElementById("registerForm").style.display = "none";
+        generateCaptcha();
+    });
+    if (document.getElementById('logoutBtn')) document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('current_user');
+        localStorage.removeItem('is_admin');
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("loginForm").style.display = "block";
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('captcha').value = '';
+        disableDepositWithdrawButtons();
+        document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+    });
 });
 
 // Đăng ký
-document.getElementById('registerBtn').addEventListener('click', async () => {
+if (document.getElementById('registerBtn')) document.getElementById('registerBtn').addEventListener('click', async () => {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value;
     const password2 = document.getElementById('reg_password2').value;
@@ -152,7 +155,7 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
 });
 
 // Đăng nhập
-document.getElementById('loginBtn').addEventListener('click', async () => {
+if (document.getElementById('loginBtn')) document.getElementById('loginBtn').addEventListener('click', async () => {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     const captcha = (document.getElementById('captcha').value || '').trim().toUpperCase();
@@ -334,174 +337,163 @@ async function loadUserHistory(username) {
     }
 }
 
-// =================== GAME TÀI XỈU ===================
+// =================== GAME TÀI XỈU MD5 (UI CHUẨN) ===================
 
-const BET_AMOUNTS = [1000, 10000, 100000, 500000, 5000000, 10000000, 50000000];
-const GAME_BET_TIME = 30;
+const BET_AMOUNTS_MD5 = [1000, 5000, 10000, 50000, 100000, 500000, 1000000, 10000000];
+let round = 1;
+let timer = 30;
+let interval;
+let betSide = "tai"; // "tai" hoặc "xiu"
+let userBets = { tai: 0, xiu: 0 };
+let totalTai = 458462000;
+let totalXiu = 483611000;
+let resultHistory = [];
+let dialNum = 12; // tổng 3 xúc xắc
+let nanActive = false;
 
-let gameState = {
-    round: 1,
-    timeLeft: GAME_BET_TIME,
-    isBetting: true,
-    bets: { tai: 0, xiu: 0 },
-    userBets: { tai: 0, xiu: 0 },
-    dice: [1, 1, 1],
-    history: [],
-    userHistory: []
-};
-let gameInterval = null;
-
-function randomDice() {
-    return Math.floor(Math.random() * 6) + 1;
+function updateBoard() {
+    if (document.getElementById("tx-round-id")) document.getElementById("tx-round-id").textContent = round;
+    if (document.getElementById("tx-timer")) document.getElementById("tx-timer").textContent = timer;
+    if (document.getElementById("tx-tai-total")) document.getElementById("tx-tai-total").textContent = totalTai.toLocaleString();
+    if (document.getElementById("tx-xiu-total")) document.getElementById("tx-xiu-total").textContent = totalXiu.toLocaleString();
+    if (document.getElementById("tx-bet-amount")) document.getElementById("tx-bet-amount").value = userBets[betSide] || 0;
+    updateDial(dialNum);
+    updateResultList();
+    if (document.getElementById("tx-tai-select")) document.getElementById("tx-tai-select").classList.toggle("selected", betSide === "tai");
+    if (document.getElementById("tx-xiu-select")) document.getElementById("tx-xiu-select").classList.toggle("selected", betSide === "xiu");
 }
 
-function renderDice(diceArr) {
-    for (let i = 1; i <= 3; i++) {
-        document.getElementById(`dice${i}`).textContent = diceArr[i-1];
-    }
+function updateResultList() {
+    const el = document.getElementById("tx-result-list");
+    if (!el) return;
+    el.innerHTML = resultHistory.slice(-15).map(x =>
+        `<span class="tx-result-ball ${x.result}">${x.sum}</span>`
+    ).join("");
 }
 
-function renderBets() {
-    document.getElementById('tx-total-tai').textContent = gameState.bets.tai.toLocaleString();
-    document.getElementById('tx-total-xiu').textContent = gameState.bets.xiu.toLocaleString();
+function updateDial(num) {
+    const dial = document.getElementById("tx-dial");
+    const dialNumEl = document.getElementById("tx-dial-num");
+    if (!dial || !dialNumEl) return;
+    dialNumEl.textContent = num;
+    // Xoay dial theo tổng
+    let deg = ((num-3)/15) * 360;
+    dial.style.transform = `rotate(${deg}deg)`;
 }
 
-function renderQuickBets() {
-    const group = document.getElementById('quickBetGroup');
-    group.innerHTML = BET_AMOUNTS.map(v =>
-        `<button type="button" class="quick-bet-btn" data-amount="${v}">${v >= 1000000 ? (v/1000000)+'m' : (v/1000)+'k'}</button>`
-    ).join('');
-    group.querySelectorAll('.quick-bet-btn').forEach(btn => {
-        btn.onclick = () => {
-            document.getElementById('betAmount').value = btn.dataset.amount;
-        };
-    });
-}
-
-function resetUserBets() {
-    gameState.userBets = { tai: 0, xiu: 0 };
-    document.getElementById('betTai').disabled = false;
-    document.getElementById('betXiu').disabled = false;
-}
-
-function placeBet(side) {
-    if (!gameState.isBetting) {
-        showCustomAlert('Hết thời gian đặt cược!');
-        return;
-    }
-    const amount = parseInt(document.getElementById('betAmount').value);
-    if (!amount || isNaN(amount) || amount < 1000) {
-        showCustomAlert('Số tiền cược không hợp lệ!');
-        return;
-    }
-    if (amount > parseInt(document.getElementById("userBalance").textContent.replace(/,/g,''))) {
-        showCustomAlert('Không đủ số dư để cược!');
-        return;
-    }
-    gameState.userBets[side] += amount;
-    gameState.bets[side] += amount;
-    document.getElementById('betTai').disabled = true;
-    document.getElementById('betXiu').disabled = true;
-    renderBets();
-    showCustomAlert(`Đã đặt cược ${side.toUpperCase()} ${amount.toLocaleString()} VNĐ cho phiên #${gameState.round}`);
-}
-
-function startGameTX() {
-    renderQuickBets();
-    resetUserBets();
-    gameState.timeLeft = GAME_BET_TIME;
-    gameState.isBetting = true;
-    document.getElementById('countdown').textContent = gameState.timeLeft;
-    renderBets();
-    renderDice(['?','?','?']);
-    if (gameInterval) clearInterval(gameInterval);
-    gameInterval = setInterval(() => {
-        gameState.timeLeft -= 1;
-        document.getElementById('countdown').textContent = gameState.timeLeft;
-        if (gameState.timeLeft === 0) {
-            clearInterval(gameInterval);
-            settleGameTX();
+function startTimer() {
+    timer = 30;
+    updateBoard();
+    clearInterval(interval);
+    interval = setInterval(()=>{
+        timer--;
+        if(document.getElementById("tx-timer")) document.getElementById("tx-timer").textContent = timer;
+        if(timer <= 0) {
+            clearInterval(interval);
+            settleRound();
         }
     }, 1000);
 }
 
-function settleGameTX() {
-    gameState.isBetting = false;
-    let dice = [randomDice(), randomDice(), randomDice()];
-    let sum = dice[0] + dice[1] + dice[2];
-    let result = sum >= 11 && sum <= 17 ? 'tai' : 'xiu';
-    gameState.dice = dice;
-    renderDice(dice);
+function settleRound() {
+    // Random xúc xắc
+    let dice = nanActive ? nanningDice() : [randDice(), randDice(), randDice()];
+    let sum = dice[0]+dice[1]+dice[2];
+    let result = sum >= 11 && sum <= 17 ? "tai" : "xiu";
+    dialNum = sum;
+    updateDial(sum);
 
-    gameState.history.unshift({
-        round: gameState.round,
-        dice: [...dice],
-        sum,
-        result
-    });
-    if (gameState.history.length > 20) gameState.history.length = 20;
-    renderHistory();
+    // Lưu lịch sử
+    resultHistory.unshift({sum, result});
+    if(resultHistory.length>30) resultHistory.length=30;
+    updateResultList();
 
-    if (gameState.userBets.tai > 0 || gameState.userBets.xiu > 0) {
-        let win = 0, lose = 0;
-        if (gameState.userBets[result] > 0) win += gameState.userBets[result];
-        if (gameState.userBets[result === 'tai' ? 'xiu' : 'tai'] > 0) lose += gameState.userBets[result === 'tai' ? 'xiu' : 'tai'];
-        let time = new Date().toLocaleString('vi-VN', { hour12: false });
-        gameState.userHistory.unshift({
-            time,
-            bet: {...gameState.userBets},
-            result: result.toUpperCase(),
-            sum,
-            win,
-            lose
-        });
-        if (gameState.userHistory.length > 20) gameState.userHistory.length = 20;
-        renderUserBetHistory();
-        let balance = parseInt(document.getElementById("userBalance").textContent.replace(/,/g,''));
-        balance = balance + win - lose;
-        document.getElementById("userBalance").textContent = balance.toLocaleString();
+    // Demo cộng tổng cược cho bàn
+    totalTai += userBets["tai"];
+    totalXiu += userBets["xiu"];
+    // Reset cược user
+    userBets = { tai: 0, xiu: 0 };
+    nanActive = false;
+
+    setTimeout(()=>{
+        round++;
+        dialNum = 12;
+        startTimer();
+        if(document.getElementById("tx-bet-btn")) document.getElementById("tx-bet-btn").disabled = false;
+        if(document.getElementById("tx-nan-btn")) document.getElementById("tx-nan-btn").disabled = false;
+    }, 3200);
+}
+
+function randDice() {
+    return Math.floor(Math.random()*6)+1;
+}
+
+// NẶN: cho phép người chơi "nặn" xúc xắc, random tổng từ 8..16
+function nanningDice() {
+    let sum = Math.floor(Math.random()*9)+8;
+    for(let i=1;i<=6;i++){
+        for(let j=1;j<=6;j++){
+            let k=sum-i-j;
+            if(k>=1&&k<=6) return [i,j,k];
+        }
     }
-    setTimeout(() => {
-        gameState.round++;
-        gameState.bets = { tai: 0, xiu: 0 };
-        startGameTX();
-    }, 5000);
+    return [6,6,6];
 }
 
-function renderHistory() {
-    let html = '';
-    gameState.history.forEach(h => {
-        html += `<div>Phiên ${h.round}: [${h.dice.join(', ')}] - Tổng:${h.sum} - ${h.result.toUpperCase()}</div>`;
-    });
-    document.getElementById('tx-stat-list').innerHTML = html;
-}
+document.addEventListener('DOMContentLoaded', () => {
+    // Nút cược
+    if(document.getElementById("tx-bet-btn")) document.getElementById("tx-bet-btn").onclick = function() {
+        let amt = parseInt(document.getElementById("tx-bet-amount").value);
+        if(isNaN(amt)||amt<=0) {
+            alert("Vui lòng nhập số tiền cược > 0");
+            return;
+        }
+        userBets[betSide] += amt;
+        document.getElementById("tx-bet-amount").value = userBets[betSide];
+        this.disabled = true;
+        if(document.getElementById("tx-nan-btn")) document.getElementById("tx-nan-btn").disabled = true;
+        alert(`Đã cược ${amt.toLocaleString()} vào ${betSide.toUpperCase()}`);
+    };
 
-function renderUserBetHistory() {
-    let html = '';
-    gameState.userHistory.forEach(h => {
-        html += `<tr>
-            <td>${h.time}</td>
-            <td>${h.bet.tai > 0 ? 'Tài' : 'Xỉu'}</td>
-            <td>${h.result}</td>
-            <td>${h.sum}</td>
-            <td>${h.win > 0 ? '+ ' + h.win.toLocaleString() : (h.lose>0 ? '- ' + h.lose.toLocaleString() : '0')}</td>
-        </tr>`;
-    });
-    document.querySelector('#userStatsTable tbody').innerHTML = html;
-}
+    // Nút nặn
+    if(document.getElementById("tx-nan-btn")) document.getElementById("tx-nan-btn").onclick = function() {
+        if(nanActive){
+            alert("Bạn đã nặn rồi!");
+            return;
+        }
+        nanActive = true;
+        alert("Bạn đã nặn! Tổng sẽ được nặn khi hết phiên.");
+        this.disabled = true;
+    };
 
-document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('betTai'))
-        document.getElementById('betTai').onclick = function() { placeBet('tai'); };
-    if (document.getElementById('betXiu'))
-        document.getElementById('betXiu').onclick = function() { placeBet('xiu'); };
-    if (document.getElementById('placeBetBtn'))
-        document.getElementById('placeBetBtn').onclick = function() {
-            let group = document.getElementById('quickBetGroup');
-            group.style.display = (group.style.display === 'block' ? 'none' : 'block');
+    // Nút quick bet
+    document.querySelectorAll(".tx-quick-btn").forEach(btn=>{
+        btn.onclick = function() {
+            document.getElementById("tx-bet-amount").value = parseInt(this.dataset.amount);
         };
-    if (document.getElementById('tx-game-container')) {
-        startGameTX();
+    });
+
+    // Chọn bên cược khi click vào tổng Tài/Xỉu
+    if(document.getElementById("tx-tai-select")) document.getElementById("tx-tai-select").onclick = function() {
+        betSide = "tai";
+        updateBoard();
+    };
+    if(document.getElementById("tx-xiu-select")) document.getElementById("tx-xiu-select").onclick = function() {
+        betSide = "xiu";
+        updateBoard();
+    };
+
+    // Copy kết quả
+    if(document.getElementById("tx-copy-btn")) document.getElementById("tx-copy-btn").onclick = function() {
+        let txt = resultHistory.slice(0,20).map(x=>x.sum).join(" - ");
+        navigator.clipboard.writeText(txt);
+        alert("Đã copy kết quả!");
+    };
+
+    // Khởi động game tài xỉu MD5 nếu có UI
+    if(document.getElementById("tx-main-container") || document.getElementById("tx-dial")) {
+        updateBoard();
+        startTimer();
     }
 });
 
@@ -511,33 +503,33 @@ function showCustomAlert(msg) {
 }
 
 async function loadUserInfo(username) {
-    document.getElementById("userNameDisplay").textContent = username;
+    if (document.getElementById("userNameDisplay")) document.getElementById("userNameDisplay").textContent = username;
     try {
         const res = await fetch(`${SHEETBEST_USERS}?username=${encodeURIComponent(username)}`);
         const users = await res.json();
-        if (users && users[0]) {
+        if (users && users[0] && document.getElementById("userBalance")) {
             document.getElementById("userBalance").textContent = (users[0].balance || 0).toLocaleString();
         }
     } catch (e) {
-        document.getElementById("userBalance").textContent = "0";
+        if (document.getElementById("userBalance")) document.getElementById("userBalance").textContent = "0";
     }
 }
 
 function showAdminPanel() {
-    document.getElementById("adminPanel").style.display = "block";
+    if (document.getElementById("adminPanel")) document.getElementById("adminPanel").style.display = "block";
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
     const currentUser = localStorage.getItem('current_user');
-    if (currentUser) {
+    if (currentUser && document.getElementById('loginForm')) {
         document.getElementById('loginForm').style.display = 'none';
-        document.getElementById('mainContent').style.display = 'block';
+        if (document.getElementById('mainContent')) document.getElementById('mainContent').style.display = 'block';
         await afterLoginOrRegister();
     } else {
-        document.getElementById('loginForm').style.display = 'block';
-        document.getElementById('mainContent').style.display = 'none';
+        if (document.getElementById('loginForm')) document.getElementById('loginForm').style.display = 'block';
+        if (document.getElementById('mainContent')) document.getElementById('mainContent').style.display = 'none';
         disableDepositWithdrawButtons();
-        document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+        if (document.getElementById("userHistoryTableBody")) document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
     }
 });
 
@@ -546,5 +538,5 @@ async function afterLoginOrRegister() {
     await loadUserInfo(username);
     enableDepositWithdrawButtons();
     await loadUserHistory(username);
-    startGameTX();
+    startTimer();
 }
