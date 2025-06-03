@@ -1,8 +1,9 @@
-
-const SHEETBEST_API = process.env.SHEETBEST_API_BET || process.env.SHEETBEST_API || "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
+const SHEETBEST_API =
+  process.env.SHEETBEST_API_BET ||
+  process.env.SHEETBEST_API ||
+  "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
 const BET_SHEET = "bets";
 
-// Helper: lấy tất cả cược
 async function getAllBets() {
   const url = BET_SHEET
     ? `${SHEETBEST_API}?sheet=${encodeURIComponent(BET_SHEET)}`
@@ -20,8 +21,8 @@ export default async function handler(req, res) {
     ? { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SHEETBEST_KEY}` }
     : { 'Content-Type': 'application/json' };
 
-  if (req.method === 'POST') {
-    try {
+  try {
+    if (req.method === 'POST') {
       const { round, username, side, amount, result, sum, time } = req.body;
       if (!username || !side || !amount) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -49,23 +50,19 @@ export default async function handler(req, res) {
       if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
       const data = await createRes.json();
       return res.status(201).json({ success: true, data });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
     }
-  }
 
-  if (req.method === 'GET') {
-    try {
+    if (req.method === 'GET') {
       const bets = await getAllBets();
       return res.json({ bets: bets || [] });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
     }
-  }
 
-  if (req.method === 'DELETE') {
-    return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt, hãy xóa thủ công trên Google Sheet hoặc ghi đè bằng tay." });
-  }
+    if (req.method === 'DELETE') {
+      return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt, hãy xóa thủ công trên Google Sheet hoặc ghi đè bằng tay." });
+    }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || "Lỗi máy chủ" });
+  }
 }
