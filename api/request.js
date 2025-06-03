@@ -1,44 +1,53 @@
-const SHEET_BEST_URL =
-  process.env.SHEETBEST_API_REQUEST ||
-  "https://sheet.best/api/sheets/1_fvM8R8nmyY0WeYdJwBveYRxoFp3P6nIsa862X5GlCQ/tabs/requests";
+const { getSheetsClient, SHEET_ID } = require('./_googleSheet');
+const SHEET_NAME = 'requests';
 
-export default async function handler(req, res) {
+async function getRequests() {
+  const sheets = await getSheetsClient();
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: SHEET_NAME,
+  });
+  const [header, ...rows] = resp.data.values || [];
+  return rows.map(row => {
+    const req = {};
+    header.forEach((key, i) => req[key] = row[i]);
+    return req;
+  });
+}
+
+async function appendRequest(data) {
+  const sheets = await getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: SHEET_NAME,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [data] }
+  });
+}
+
+module.exports = async (req, res) => {
   try {
+    if (req.method === 'GET') {
+      const requests = await getRequests();
+      return res.status(200).json(requests);
+    }
     if (req.method === 'POST') {
-      const { username, type, amount, bank_code, note } = req.body;
-      if (!username || !type || !amount || isNaN(amount)) {
-        return res.status(400).json({ error: 'Thiếu thông tin hoặc số tiền không hợp lệ.' });
-      }
-      const response = await fetch(SHEET_BEST_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          timestamp: new Date().toISOString(),
-          username,
-          type,
-          amount,
-          status: 'pending',
-          bank_code: bank_code || "",
-          note: note || ""
-        })
-      });
-      if (!response.ok) throw new Error("Không ghi được lên sheet.best");
+      const { username, type, amount, bank_code = "", note = "" } = req.body;
+      if (!username || !type || !amount) return res.status(400).json({ error: "Thiếu thông tin." });
+      await appendRequest([
+        new Date().toISOString(),
+        username,
+        type,
+        amount,
+        "pending",
+        bank_code,
+        note
+      ]);
       return res.status(201).json({ success: true });
     }
-
-    if (req.method === 'GET') {
-      const response = await fetch(SHEET_BEST_URL);
-      if (!response.ok) throw new Error("Không lấy được danh sách requests");
-      const data = await response.json();
-      return res.status(200).json({ data });
-    }
-
-    if (req.method === 'DELETE') {
-      return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt. Hãy xóa thủ công trên Google Sheet nếu cần." });
-    }
-
-    return res.status(405).json({ error: "Phương thức không hỗ trợ." });
+    res.status(405).json({ error: "Phương thức không hỗ trợ." });
   } catch (e) {
-    return res.status(500).json({ error: e.message || "Lỗi máy chủ" });
+    res.status(500).json({ error: e.message });
   }
-}
+};
