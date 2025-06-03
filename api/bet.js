@@ -1,6 +1,6 @@
 
 const SHEETBEST_API = process.env.SHEETBEST_API_BET || process.env.SHEETBEST_API || "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
-const BET_SHEET = "bets"; // Nếu Google Sheet có nhiều sheet, dùng tên sheet này
+const BET_SHEET = "bets";
 
 // Helper: lấy tất cả cược
 async function getAllBets() {
@@ -64,7 +64,6 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    // SheetBest không hỗ trợ xóa hàng loạt
     return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt, hãy xóa thủ công trên Google Sheet hoặc ghi đè bằng tay." });
   }
 
