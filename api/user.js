@@ -23,7 +23,6 @@ async function getUser(username) {
 }
 
 export default async function handler(req, res) {
-  // Đăng ký user
   if (req.method === "POST") {
     try {
       const { username, passwordHash, ip } = req.body;
@@ -34,7 +33,6 @@ export default async function handler(req, res) {
       if (exists) {
         return res.status(400).json({ error: "Username đã tồn tại." });
       }
-      // Tạo user mới với balance mặc định là 0
       const createRes = await fetch(SHEET_BEST_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -53,13 +51,11 @@ export default async function handler(req, res) {
     }
   }
 
-  // Lấy thông tin user hoặc toàn bộ user
   if (req.method === "GET") {
     try {
       const { username, all } = req.query;
       if (all) {
         const users = await getAllUsers();
-        // KHÔNG trả về passwordHash khi trả về danh sách
         return res.status(200).json(users.map(u => ({
           username: u.username,
           balance: u.balance,
@@ -76,7 +72,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({
         username: user.username,
-        passwordHash: user.passwordHash, // Để FE kiểm tra password khi login
+        passwordHash: user.passwordHash,
         balance: user.balance,
         ip: user.ip,
         role: user.role || "user"
@@ -86,7 +82,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // Cập nhật số dư user (và IP nếu có)
   if (req.method === "PATCH") {
     try {
       const { username, balance, ip } = req.body;
@@ -105,7 +100,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // Xóa user
   if (req.method === "DELETE") {
     try {
       const { username } = req.query;
