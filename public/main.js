@@ -31,22 +31,6 @@ function generateCaptcha(prefix = '') {
         if (display) display.textContent = captcha;
     }
 }
-document.addEventListener("DOMContentLoaded", function() {
-    generateCaptcha();
-    const loginCaptcha = document.getElementById('captchaDisplay');
-    if (loginCaptcha) loginCaptcha.onclick = function() { generateCaptcha(); };
-    const regCaptcha = document.getElementById('reg_captchaDisplay');
-    if (regCaptcha) regCaptcha.onclick = function() { generateCaptcha('reg_'); };
-});
-
-function enableDepositWithdrawButtons() {
-    if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = false;
-    if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = false;
-}
-function disableDepositWithdrawButtons() {
-    if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = true;
-    if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = true;
-}
 
 function randomCode(length = 7) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -57,7 +41,17 @@ function randomCode(length = 7) {
     return code;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function enableDepositWithdrawButtons() {
+    if(document.getElementById('openDepositModalBtn')) document.getElementById('openDepositModalBtn').disabled = false;
+    if(document.getElementById('openWithdrawModalBtn')) document.getElementById('openWithdrawModalBtn').disabled = false;
+}
+function disableDepositWithdrawButtons() {
+    if(document.getElementById('openDepositModalBtn')) document.getElementById('openDepositModalBtn').disabled = true;
+    if(document.getElementById('openWithdrawModalBtn')) document.getElementById('openWithdrawModalBtn').disabled = true;
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    generateCaptcha();
     if (document.getElementById('showRegisterLink')) document.getElementById('showRegisterLink').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById("loginForm").style.display = "none";
@@ -81,6 +75,117 @@ document.addEventListener('DOMContentLoaded', () => {
         disableDepositWithdrawButtons();
         document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
     });
+
+    if (document.getElementById('openDepositModalBtn')) {
+        document.getElementById('openDepositModalBtn').onclick = function() {
+            document.getElementById('depositModal').style.display = 'block';
+            document.getElementById('modalDepositAmount').value = '';
+            document.getElementById('depositCodeDisplay').textContent = '';
+        };
+    }
+    if (document.getElementById('depositModalClose')) {
+        document.getElementById('depositModalClose').onclick = function() {
+            document.getElementById('depositModal').style.display = 'none';
+        };
+    }
+    if (document.getElementById('generateDepositCodeBtn')) {
+        document.getElementById('generateDepositCodeBtn').onclick = function() {
+            document.getElementById('depositCodeDisplay').textContent = randomCode();
+        };
+    }
+    if (document.getElementById('submitDepositBtn')) {
+        document.getElementById('submitDepositBtn').onclick = async function() {
+            const username = localStorage.getItem('current_user');
+            const amount = parseInt(document.getElementById('modalDepositAmount').value);
+            const code = document.getElementById('depositCodeDisplay').textContent;
+            if (!amount || isNaN(amount) || amount < 1000) {
+                alert("Vui lòng nhập số tiền nạp hợp lệ (>= 1000)!");
+                return;
+            }
+            if (!code) {
+                alert("Vui lòng nhấn tạo mã chuyển khoản trước!");
+                return;
+            }
+            await fetch(API_REQUESTS, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username,
+                    type: "deposit",
+                    amount,
+                    bank_code: code,
+                    note: "",
+                    status: "pending"
+                })
+            });
+            alert("Gửi yêu cầu nạp tiền thành công! Vui lòng chờ xác nhận từ admin.");
+            document.getElementById('depositModal').style.display = 'none';
+            await loadUserHistory(username);
+        };
+    }
+    if (document.getElementById('openWithdrawModalBtn')) {
+        document.getElementById('openWithdrawModalBtn').onclick = function() {
+            document.getElementById('withdrawModal').style.display = 'block';
+            document.getElementById('modalBankName').value = '';
+            document.getElementById('modalBankAccount').value = '';
+            document.getElementById('modalWithdrawAmount').value = '';
+        };
+    }
+    if (document.getElementById('withdrawModalClose')) {
+        document.getElementById('withdrawModalClose').onclick = function() {
+            document.getElementById('withdrawModal').style.display = 'none';
+        };
+    }
+    if (document.getElementById('submitWithdrawBtn')) {
+        document.getElementById('submitWithdrawBtn').onclick = async function() {
+            const username = localStorage.getItem('current_user');
+            const bank = document.getElementById('modalBankName').value.trim();
+            const account = document.getElementById('modalBankAccount').value.trim();
+            const amount = parseInt(document.getElementById('modalWithdrawAmount').value);
+            if (!bank || !account || !amount || isNaN(amount) || amount < 1000) {
+                alert("Vui lòng nhập đầy đủ thông tin và số tiền hợp lệ (>= 1000)!");
+                return;
+            }
+            const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
+            const user = await res.json();
+            if (!user || user.balance === undefined) {
+                alert("Không lấy được thông tin tài khoản.");
+                return;
+            }
+            if (parseInt(user.balance) < amount) {
+                alert("Số dư không đủ để rút!");
+                return;
+            }
+            await fetch(API_USERS, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, balance: parseInt(user.balance) - amount })
+            });
+            await fetch(API_REQUESTS, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username,
+                    type: "withdraw",
+                    amount,
+                    bank_code: "",
+                    note: `Ngân hàng: ${bank}, Số TK: ${account}`,
+                    status: "pending"
+                })
+            });
+            alert("Gửi yêu cầu rút tiền thành công! Số dư đã trừ, vui lòng chờ xác nhận từ admin.");
+            document.getElementById('withdrawModal').style.display = 'none';
+            await loadUserInfo(username);
+            await loadUserHistory(username);
+        };
+    }
+    const currentUser = localStorage.getItem('current_user');
+    if (currentUser) enableDepositWithdrawButtons();
+    else disableDepositWithdrawButtons();
+    if (localStorage.getItem('is_admin') === '1') {
+        showAdminPanel();
+        loadAdminRequests();
+    }
 });
 
 if (document.getElementById('registerBtn')) document.getElementById('registerBtn').addEventListener('click', async () => {
@@ -188,106 +293,6 @@ if (document.getElementById('loginBtn')) document.getElementById('loginBtn').add
     }
 });
 
-async function requestDeposit(username, amount) {
-    const code = randomCode();
-    try {
-        if (!username) {
-            alert("Bạn chưa đăng nhập!");
-            return;
-        }
-        if (!amount || isNaN(amount) || amount < 1000) {
-            alert("Vui lòng nhập số tiền nạp hợp lệ (>= 1000)!");
-            return;
-        }
-        await fetch(API_REQUESTS, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                username,
-                type: "deposit",
-                amount,
-                bank_code: code,
-                note: "",
-                status: "pending"
-            })
-        });
-        alert(`Gửi yêu cầu nạp tiền thành công!\nMã giao dịch: ${code}\nVui lòng chờ admin xác nhận.`);
-        await loadUserHistory(username);
-    } catch (e) {
-        alert("Lỗi kết nối máy chủ nạp tiền.");
-    }
-}
-
-async function requestWithdraw(username, amount) {
-    const code = randomCode();
-    try {
-        if (!username) {
-            alert("Bạn chưa đăng nhập!");
-            return;
-        }
-        if (!amount || isNaN(amount) || amount < 1000) {
-            alert("Vui lòng nhập số tiền rút hợp lệ (>= 1000)!");
-            return;
-        }
-        const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
-        const user = await res.json();
-        if (!user || user.balance === undefined) {
-            alert("Không lấy được thông tin tài khoản.");
-            return;
-        }
-        if (parseInt(user.balance) < amount) {
-            alert("Số dư không đủ để rút!");
-            return;
-        }
-        await fetch(API_USERS, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, balance: parseInt(user.balance) - amount })
-        });
-        await fetch(API_REQUESTS, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                username,
-                type: "withdraw",
-                amount,
-                bank_code: code,
-                note: "",
-                status: "done"
-            })
-        });
-        alert(`Rút tiền thành công!\nMã giao dịch: ${code}\nSố dư đã được cập nhật.`);
-        await loadUserInfo(username);
-        await loadUserHistory(username);
-    } catch (e) {
-        alert("Lỗi kết nối máy chủ rút tiền.");
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const currentUser = localStorage.getItem('current_user');
-    if (currentUser) enableDepositWithdrawButtons();
-    else disableDepositWithdrawButtons();
-
-    const depositBtn = document.getElementById('depositBtn');
-    if (depositBtn) {
-        depositBtn.addEventListener('click', function() {
-            const username = localStorage.getItem('current_user');
-            const amount = parseInt(document.getElementById('depositAmount').value);
-            requestDeposit(username, amount);
-        });
-    }
-
-    const withdrawBtn = document.getElementById('withdrawBtn');
-    if (withdrawBtn) {
-        withdrawBtn.addEventListener('click', function() {
-            const username = localStorage.getItem('current_user');
-            const amount = parseInt(document.getElementById('withdrawAmount').value);
-            requestWithdraw(username, amount);
-        });
-    }
-});
-
 async function loadUserHistory(username) {
     try {
         const res = await fetch(`${API_REQUESTS}?username=${encodeURIComponent(username)}`);
@@ -308,6 +313,19 @@ async function loadUserHistory(username) {
         document.getElementById("userHistoryTableBody").innerHTML = html;
     } catch (e) {
         document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Không tải được dữ liệu</td></tr>';
+    }
+}
+
+async function loadUserInfo(username) {
+    if (document.getElementById("userNameDisplay")) document.getElementById("userNameDisplay").textContent = username;
+    try {
+        const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
+        const user = await res.json();
+        if (user && user.balance !== undefined && document.getElementById("userBalance")) {
+            document.getElementById("userBalance").textContent = (user.balance || 0).toLocaleString();
+        }
+    } catch (e) {
+        if (document.getElementById("userBalance")) document.getElementById("userBalance").textContent = "0";
     }
 }
 
@@ -365,6 +383,18 @@ async function adminConfirmDeposit(requestId, username, amount) {
     } catch (e) {
         alert("Lỗi xác nhận nạp tiền.");
     }
+}
+
+function showAdminPanel() {
+    if (document.getElementById("adminPanel")) document.getElementById("adminPanel").style.display = "block";
+}
+
+async function afterLoginOrRegister() {
+    const username = localStorage.getItem('current_user');
+    await loadUserInfo(username);
+    enableDepositWithdrawButtons();
+    await loadUserHistory(username);
+    startTimer();
 }
 
 const BET_AMOUNTS_MD5 = [1000, 5000, 10000, 50000, 100000, 500000, 1000000, 10000000];
@@ -512,47 +542,3 @@ document.addEventListener('DOMContentLoaded', () => {
         startTimer();
     }
 });
-
-async function loadUserInfo(username) {
-    if (document.getElementById("userNameDisplay")) document.getElementById("userNameDisplay").textContent = username;
-    try {
-        const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
-        const user = await res.json();
-        if (user && user.balance !== undefined && document.getElementById("userBalance")) {
-            document.getElementById("userBalance").textContent = (user.balance || 0).toLocaleString();
-        }
-    } catch (e) {
-        if (document.getElementById("userBalance")) document.getElementById("userBalance").textContent = "0";
-    }
-}
-
-function showAdminPanel() {
-    if (document.getElementById("adminPanel")) document.getElementById("adminPanel").style.display = "block";
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
-    const currentUser = localStorage.getItem('current_user');
-    if (currentUser && document.getElementById('loginForm')) {
-        document.getElementById('loginForm').style.display = 'none';
-        if (document.getElementById('mainContent')) document.getElementById('mainContent').style.display = 'block';
-        await afterLoginOrRegister();
-    } else {
-        if (document.getElementById('loginForm')) document.getElementById('loginForm').style.display = 'block';
-        if (document.getElementById('mainContent')) document.getElementById('mainContent').style.display = 'none';
-        disableDepositWithdrawButtons();
-        if (document.getElementById("userHistoryTableBody")) document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
-    }
-
-    if (localStorage.getItem('is_admin') === '1') {
-        showAdminPanel();
-        loadAdminRequests();
-    }
-});
-
-async function afterLoginOrRegister() {
-    const username = localStorage.getItem('current_user');
-    await loadUserInfo(username);
-    enableDepositWithdrawButtons();
-    await loadUserHistory(username);
-    startTimer();
-}
