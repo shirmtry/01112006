@@ -1,4 +1,4 @@
-// =================== CONFIG API ====================
+/ =================== CONFIG API ====================
 const API_BASE = "https://01112006.vercel.app/api";
 const API_USER = `${API_BASE}/user`;
 const API_REQUEST = `${API_BASE}/request`;
@@ -61,16 +61,6 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     disableDepositWithdrawButtons();
 });
 
-// =================== GAME STATE ====================
-let tx_stats = [];
-let MAX_STATS = 20;
-let tx_interval = null;
-let tx_settleTimeout = null;
-let betSyncInterval = null;
-let userBet = { side: null, amount: 0, round: 0 };
-let tx_locked = false;
-let tx_round = 1; // Số thứ tự phiên chơi
-
 // =================== ENABLE/DISABLE DEPOSIT/WITHDRAW BUTTONS ================
 function enableDepositWithdrawButtons() {
     if(document.getElementById('depositBtn')) document.getElementById('depositBtn').disabled = false;
@@ -81,7 +71,7 @@ function disableDepositWithdrawButtons() {
     if(document.getElementById('withdrawBtn')) document.getElementById('withdrawBtn').disabled = true;
 }
 
-// ========== ĐĂNG KÝ ==========
+// =================== ĐĂNG KÝ/ĐĂNG NHẬP ===================
 document.getElementById('registerBtn').addEventListener('click', async () => {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value;
@@ -158,7 +148,6 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
     }
 });
 
-// ========== ĐĂNG NHẬP ==========
 document.getElementById('loginBtn').addEventListener('click', async () => {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
@@ -222,8 +211,19 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 });
 
 // =================== NẠP/RÚT TIỀN ===================
-async function requestDeposit(username, amount, bank_code = "", note = "") {
+async function requestDeposit(username, amount) {
     try {
+        // Validate
+        if (!username) {
+            showCustomAlert("Bạn chưa đăng nhập!");
+            return;
+        }
+        if (!amount || isNaN(amount) || amount < 1000) {
+            showCustomAlert("Vui lòng nhập số tiền nạp hợp lệ (>= 1000)!");
+            return;
+        }
+
+        // Gửi yêu cầu nạp
         const res = await fetch(API_REQUEST, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -231,13 +231,12 @@ async function requestDeposit(username, amount, bank_code = "", note = "") {
                 username,
                 type: "deposit",
                 amount,
-                bank_code,
-                note
+                status: "pending"
             })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-            // Cập nhật số dư ngay (v16)
+            // Cộng số dư tạm thời
             try {
                 const userRes = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
                 const user = await userRes.json();
@@ -258,8 +257,19 @@ async function requestDeposit(username, amount, bank_code = "", note = "") {
     }
 }
 
-async function requestWithdraw(username, amount, bank_code = "", note = "") {
+async function requestWithdraw(username, amount) {
     try {
+        // Validate
+        if (!username) {
+            showCustomAlert("Bạn chưa đăng nhập!");
+            return;
+        }
+        if (!amount || isNaN(amount) || amount < 1000) {
+            showCustomAlert("Vui lòng nhập số tiền rút hợp lệ (>= 1000)!");
+            return;
+        }
+
+        // Gửi yêu cầu rút
         const res = await fetch(API_REQUEST, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -267,13 +277,12 @@ async function requestWithdraw(username, amount, bank_code = "", note = "") {
                 username,
                 type: "withdraw",
                 amount,
-                bank_code,
-                note
+                status: "pending"
             })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-            // Trừ số dư ngay (v16)
+            // Trừ số dư tạm thời
             try {
                 const userRes = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
                 const user = await userRes.json();
@@ -295,46 +304,32 @@ async function requestWithdraw(username, amount, bank_code = "", note = "") {
 }
 
 // ========== Sự kiện nút nạp/rút ==========
-if(document.getElementById('depositBtn')) {
-    document.getElementById('depositBtn').addEventListener('click', async () => {
-        const username = localStorage.getItem('current_user');
-        const amount = parseInt(document.getElementById('depositAmount').value);
-        const bank_code = document.getElementById('depositBank') ? document.getElementById('depositBank').value : "";
-        const note = document.getElementById('depositNote') ? document.getElementById('depositNote').value : "";
-        if (!username || !amount || amount <= 0) {
-            showCustomAlert("Vui lòng nhập số tiền muốn nạp.");
-            return;
-        }
-        await requestDeposit(username, amount, bank_code, note);
-    });
-}
-if(document.getElementById('withdrawBtn')) {
-    document.getElementById('withdrawBtn').addEventListener('click', async () => {
-        const username = localStorage.getItem('current_user');
-        const amount = parseInt(document.getElementById('withdrawAmount').value);
-        const bank_code = document.getElementById('withdrawBank') ? document.getElementById('withdrawBank').value : "";
-        const note = document.getElementById('withdrawNote') ? document.getElementById('withdrawNote').value : "";
-        if (!username || !amount || amount <= 0) {
-            showCustomAlert("Vui lòng nhập số tiền muốn rút.");
-            return;
-        }
-        await requestWithdraw(username, amount, bank_code, note);
-    });
-}
+document.addEventListener('DOMContentLoaded', function() {
+    // Đảm bảo nút luôn được bật nếu đã đăng nhập
+    const currentUser = localStorage.getItem('current_user');
+    if (currentUser) enableDepositWithdrawButtons();
+    else disableDepositWithdrawButtons();
 
-// =================== GAME TÀI XỈU & GIAO DIỆN ====================
-// ... Phần code game giữ nguyên như cũ ...
+    // Nạp tiền
+    const depositBtn = document.getElementById('depositBtn');
+    if (depositBtn) {
+        depositBtn.addEventListener('click', function() {
+            const username = localStorage.getItem('current_user');
+            const amount = parseInt(document.getElementById('depositAmount').value);
+            requestDeposit(username, amount);
+        });
+    }
 
-// ========== KHỞI ĐỘNG GAME ==========
-function startGame() {
-    document.getElementById('dice1').textContent = '?';
-    document.getElementById('dice2').textContent = '?';
-    document.getElementById('dice3').textContent = '?';
-    updateStatView();
-    renderQuickBetButtons();
-    startTXRound();
-    enableDepositWithdrawButtons();
-}
+    // Rút tiền
+    const withdrawBtn = document.getElementById('withdrawBtn');
+    if (withdrawBtn) {
+        withdrawBtn.addEventListener('click', function() {
+            const username = localStorage.getItem('current_user');
+            const amount = parseInt(document.getElementById('withdrawAmount').value);
+            requestWithdraw(username, amount);
+        });
+    }
+});
 
 // ====== BỔ SUNG HÀM showCustomAlert, loadUserInfo, showAdminPanel ======
 function showCustomAlert(msg) {
