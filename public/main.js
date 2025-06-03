@@ -518,4 +518,29 @@ async function loadUserInfo(username) {
     }
 }
 
-fun
+function showAdminPanel() {
+    document.getElementById("adminPanel").style.display = "block";
+}
+
+// ========== INIT ON LOAD ==========
+document.addEventListener('DOMContentLoaded', async () => {
+    const currentUser = localStorage.getItem('current_user');
+    if (currentUser) {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        await afterLoginOrRegister();
+    } else {
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('mainContent').style.display = 'none';
+        disableDepositWithdrawButtons();
+        document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+    }
+});
+
+async function afterLoginOrRegister() {
+    const username = localStorage.getItem('current_user');
+    await loadUserInfo(username);
+    enableDepositWithdrawButtons();
+    await loadUserHistory(username);
+    startGameTX();
+}
