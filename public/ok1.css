@@ -1,4 +1,3 @@
-
 body {
     background: #19171d;
     color: #fff;
@@ -177,7 +176,7 @@ body {
 .admin-list { list-style: none; padding: 0; margin: 0; }
 .admin-list li { padding: 4px 0; border-bottom: 1px solid #ffd60022; }
 .admin-list li:last-child { border-bottom: none; }
-button#logoutBtn {
+#logoutBtn {
     margin-top: 8px;
     margin-bottom: 10px;
     background: #e53935;
@@ -189,4 +188,239 @@ button#logoutBtn {
     cursor: pointer;
     transition: background 0.17s;
 }
-button#logoutBtn
+#logoutBtn:hover {
+    background: #b71c1c;
+}
+.tx-main-container {
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+}
+.tx-header {
+    text-align: center;
+    margin-bottom: 22px;
+}
+.tx-title {
+    font-size: 2em;
+    font-weight: bold;
+    color: #ffd600;
+    letter-spacing: 2px;
+}
+.tx-md5 {
+    color: #3498db;
+    font-size: 0.7em;
+    background: #fff;
+    padding: 3px 6px;
+    border-radius: 8px;
+}
+.tx-board {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+.tx-left, .tx-right {
+    width: 24%;
+    background: #25223a;
+    border-radius: 10px;
+    padding: 16px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.13s;
+}
+.tx-left.selected, .tx-right.selected {
+    background: #ffd600;
+    color: #232323;
+}
+.tx-bet-title.tai, .tx-bet-title.xiu {
+    font-size: 1.32em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.tx-bet-title.tai { color: #3498db; }
+.tx-bet-title.xiu { color: #e53935; }
+.tx-bet-total {
+    font-size: 1.18em;
+    font-weight: bold;
+    color: #ffe96d;
+}
+.tx-center {
+    width: 44%;
+    text-align: center;
+}
+.tx-round-id {
+    font-size: 1.12em;
+    color: #ffd600;
+    margin-bottom: 7px;
+}
+.tx-dial-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 7px;
+}
+.tx-dial {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #fff9d3;
+    border: 2.5px solid #ffd600;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.5s cubic-bezier(.63,-0.01,.54,1.14);
+}
+.tx-dial-tick {
+    position: absolute;
+    width: 7px;
+    height: 2.5px;
+    background: #ffd600;
+    left: 50%; top: 50%;
+    transform-origin: left center;
+}
+.tx-dial-tick:nth-child(1) { transform: rotate(0deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(2) { transform: rotate(30deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(3) { transform: rotate(60deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(4) { transform: rotate(90deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(5) { transform: rotate(120deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(6) { transform: rotate(150deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(7) { transform: rotate(180deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(8) { transform: rotate(210deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(9) { transform: rotate(240deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(10) { transform: rotate(270deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(11) { transform: rotate(300deg) translate(35px, 0); }
+.tx-dial-tick:nth-child(12) { transform: rotate(330deg) translate(35px, 0); }
+.tx-dial-num {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-size: 2em;
+    color: #e53935;
+    font-weight: bold;
+    top: 30px;
+    left: 0;
+}
+.tx-time {
+    font-size: 1.13em;
+    color: #ffd600;
+    margin-bottom: 7px;
+}
+.tx-bet-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.tx-bet-input {
+    width: 110px;
+    font-size: 1.07em;
+    padding: 8px 9px;
+    border: 1.3px solid #3498db;
+    border-radius: 6px;
+    margin-right: 6px;
+}
+.tx-bet-btn, .tx-nan-btn {
+    background: #3498db;
+    color: #fff;
+    border: none;
+    font-weight: bold;
+    border-radius: 6px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: background 0.17s;
+}
+.tx-bet-btn:hover, .tx-nan-btn:hover {
+    background: #217dbb;
+}
+.tx-nan-btn {
+    background: #ffd600;
+    color: #232323;
+}
+.tx-nan-btn:hover {
+    background: #ffb100;
+    color: #222;
+}
+.tx-quick-row {
+    display: flex;
+    gap: 7px;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+.tx-quick-btn {
+    background: #ffd600;
+    color: #232323;
+    border: none;
+    border-radius: 5px;
+    padding: 7px 13px;
+    font-weight: bold;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.13s;
+}
+.tx-quick-btn:hover {
+    background: #ffe96d;
+}
+.tx-result-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 2px;
+}
+.tx-result-label {
+    color: #ffd600;
+    font-weight: bold;
+    font-size: 1.04em;
+}
+.tx-result-list {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    align-items: center;
+    min-height: 32px;
+}
+.tx-result-ball {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    border-radius: 50%;
+    background: #ffd600;
+    color: #232323;
+    font-weight: bold;
+    text-align: center;
+    margin-right: 2px;
+    font-size: 1em;
+}
+.tx-result-ball.tai { background: #3498db; color: #fff; }
+.tx-result-ball.xiu { background: #e53935; color: #fff; }
+.tx-copy-btn {
+    background: #232323;
+    color: #ffd600;
+    border: 1.5px solid #ffd600;
+    border-radius: 6px;
+    padding: 7px 16px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background 0.12s, color 0.12s;
+}
+.tx-copy-btn:hover {
+    background: #ffd600;
+    color: #232323;
+}
+@media (max-width: 900px) {
+    #mainContent { padding: 10px 2vw; }
+    .tx-main-container { padding: 0; }
+}
+@media (max-width: 650px) {
+    .auth-wrapper { flex-direction: column; align-items: center; }
+    #mainContent, .login-form, .register-form { max-width: 97vw; }
+    .tx-board { flex-direction: column; gap: 8px; }
+    .tx-left, .tx-right, .tx-center { width: 95% !important; }
+}
