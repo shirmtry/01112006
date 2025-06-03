@@ -1,10 +1,13 @@
-// --- Cấu hình ---
+
+const express = require('express');
+const router = express.Router();
+const fetch = require('node-fetch');
+
 const SHEETBEST_API = process.env.SHEETBEST_API_BET || process.env.SHEETBEST_API || "https://sheet.best/api/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
-const BET_SHEET = "bets"; // Nếu Google Sheet có nhiều sheet, dùng tên sheet này
+const BET_SHEET = "bets";
 
 // Helper: lấy tất cả cược
 async function getAllBets() {
-  // Nếu dùng nhiều sheet, thêm &sheet=BET_SHEET vào URL
   const url = BET_SHEET
     ? `${SHEETBEST_API}?sheet=${encodeURIComponent(BET_SHEET)}`
     : SHEETBEST_API;
@@ -16,62 +19,56 @@ async function getAllBets() {
   return await res.json();
 }
 
-export default async function handler(req, res) {
+router.post('/', async (req, res) => {
   const headers = process.env.SHEETBEST_KEY
     ? { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SHEETBEST_KEY}` }
     : { 'Content-Type': 'application/json' };
 
-  if (req.method === 'POST') {
-    // Chấp nhận cả kiểu ghi cược đơn giản (username, side, amount)
-    // và kiểu ghi kết quả round (round, username, side, amount, result, sum, time)
-    try {
-      // Ưu tiên round/result/sum/time nếu có, nếu không thì chỉ ghi cược
-      const { round, username, side, amount, result, sum, time } = req.body;
-      if (!username || !side || !amount) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-      // Chuẩn bị object ghi lên sheet
-      const dataToWrite = {
-        timestamp: Date.now(),
-        username,
-        side,
-        amount,
-      };
-      if (round !== undefined) dataToWrite.round = round;
-      if (result !== undefined) dataToWrite.result = result;
-      if (sum !== undefined) dataToWrite.sum = sum;
-      dataToWrite.time = time || new Date().toISOString();
-
-      const url = BET_SHEET
-        ? `${SHEETBEST_API}?sheet=${encodeURIComponent(BET_SHEET)}`
-        : SHEETBEST_API;
-
-      const createRes = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(dataToWrite)
-      });
-      if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
-      const data = await createRes.json();
-      return res.status(201).json({ success: true, data });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
+  try {
+    const { round, username, side, amount, result, sum, time } = req.body;
+    if (!username || !side || !amount) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
-  }
+    const dataToWrite = {
+      timestamp: Date.now(),
+      username,
+      side,
+      amount,
+    };
+    if (round !== undefined) dataToWrite.round = round;
+    if (result !== undefined) dataToWrite.result = result;
+    if (sum !== undefined) dataToWrite.sum = sum;
+    dataToWrite.time = time || new Date().toISOString();
 
-  if (req.method === 'GET') {
-    try {
-      const bets = await getAllBets();
-      return res.json({ bets: bets || [] });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
+    const url = BET_SHEET
+      ? `${SHEETBEST_API}?sheet=${encodeURIComponent(BET_SHEET)}`
+      : SHEETBEST_API;
 
-  if (req.method === 'DELETE') {
-    // SheetBest không hỗ trợ xóa hàng loạt
-    return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt, hãy xóa thủ công trên Google Sheet hoặc ghi đè bằng tay." });
+    const createRes = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(dataToWrite)
+    });
+    if (!createRes.ok) throw new Error("Không ghi được lên sheet.best");
+    const data = await createRes.json();
+    return res.status(201).json({ success: true, data });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
+});
 
-  res.status(405).json({ error: 'Method not allowed' });
-}
+router.get('/', async (req, res) => {
+  try {
+    const bets = await getAllBets();
+    return res.json({ bets: bets || [] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/', (req, res) => {
+  // SheetBest không hỗ trợ xóa hàng loạt
+  return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt, hãy xóa thủ công trên Google Sheet hoặc ghi đè bằng tay." });
+});
+
+module.exports = router;
