@@ -1,22 +1,13 @@
+
 {
-  "name": "cobac",
+  "name": "taixiu-md5",
   "version": "1.0.0",
-  "description": "Demo web NodeJS tài xỉu kết nối Google Sheet",
-  "main": "api/user.js",
+  "description": "Game Tài Xỉu MD5 UI + API server",
+  "main": "server.js",
   "scripts": {
-    "start": "node api/user.js"
+    "start": "node server.js"
   },
-  "keywords": [
-    "nodejs",
-    "express",
-    "google-sheets"
-  ],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "googleapis": "^133.0.0",
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5"
+    "express": "^4.18.2"
   }
 }
