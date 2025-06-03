@@ -207,21 +207,11 @@ async function requestDeposit(username, amount) {
                 type: "deposit",
                 amount,
                 bank_code: code,
-                note: ""
+                note: "",
+                status: "pending"
             })
         });
-        const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
-        const user = await res.json();
-        if(user && user.balance !== undefined) {
-            let balance = parseInt(user.balance || 0) + parseInt(amount);
-            await fetch(API_USERS, {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ username, balance })
-            });
-            document.getElementById("userBalance").textContent = balance.toLocaleString();
-        }
-        alert(`Gửi yêu cầu nạp tiền thành công!\nMã giao dịch: ${code}\nSố dư đã cộng tạm thời. Vui lòng chờ admin xác nhận.`);
+        alert(`Gửi yêu cầu nạp tiền thành công!\nMã giao dịch: ${code}\nVui lòng chờ admin xác nhận.`);
         await loadUserHistory(username);
     } catch (e) {
         alert("Lỗi kết nối máy chủ nạp tiền.");
@@ -247,21 +237,11 @@ async function requestWithdraw(username, amount) {
                 type: "withdraw",
                 amount,
                 bank_code: code,
-                note: ""
+                note: "",
+                status: "pending"
             })
         });
-        const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
-        const user = await res.json();
-        if(user && user.balance !== undefined) {
-            let balance = parseInt(user.balance || 0) - parseInt(amount);
-            await fetch(API_USERS, {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ username, balance })
-            });
-            document.getElementById("userBalance").textContent = balance.toLocaleString();
-        }
-        alert(`Gửi yêu cầu rút tiền thành công!\nMã giao dịch: ${code}\nSố dư đã trừ tạm thời. Vui lòng chờ admin xác nhận.`);
+        alert(`Gửi yêu cầu rút tiền thành công!\nMã giao dịch: ${code}\nVui lòng chờ admin xác nhận.`);
         await loadUserHistory(username);
     } catch (e) {
         alert("Lỗi kết nối máy chủ rút tiền.");
@@ -312,6 +292,62 @@ async function loadUserHistory(username) {
         document.getElementById("userHistoryTableBody").innerHTML = html;
     } catch (e) {
         document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Không tải được dữ liệu</td></tr>';
+    }
+}
+
+async function loadAdminRequests() {
+    if (!document.getElementById('adminRequests')) return;
+    try {
+        const res = await fetch(`${API_REQUESTS}?type=deposit&status=pending`);
+        const requests = await res.json();
+        let html = '';
+        if (Array.isArray(requests) && requests.length) {
+            requests.forEach((req) => {
+                html += `<li>
+                    <b>${req.username}</b> - ${req.amount.toLocaleString()} VNĐ - Mã: ${req.bank_code}
+                    <button class="admin-confirm-deposit" data-id="${req._id}" data-username="${req.username}" data-amount="${req.amount}">Xác nhận</button>
+                </li>`;
+            });
+        } else {
+            html = '<li>Không có yêu cầu nạp tiền chờ duyệt.</li>';
+        }
+        document.getElementById('adminRequests').innerHTML = html;
+        document.querySelectorAll('.admin-confirm-deposit').forEach(btn => {
+            btn.onclick = async function() {
+                const id = this.getAttribute('data-id');
+                const username = this.getAttribute('data-username');
+                const amount = parseInt(this.getAttribute('data-amount'));
+                await adminConfirmDeposit(id, username, amount);
+            };
+        });
+    } catch (e) {
+        document.getElementById('adminRequests').innerHTML = '<li>Lỗi tải danh sách yêu cầu.</li>';
+    }
+}
+
+async function adminConfirmDeposit(requestId, username, amount) {
+    try {
+        const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
+        const user = await res.json();
+        if (!user || !user.username) {
+            alert("Không tìm thấy user.");
+            return;
+        }
+        const newBalance = parseInt(user.balance || 0) + parseInt(amount);
+        await fetch(API_USERS, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, balance: newBalance })
+        });
+        await fetch(`${API_REQUESTS}/${requestId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "done" })
+        });
+        alert(`Đã cộng ${amount.toLocaleString()} VNĐ cho user ${username}`);
+        loadAdminRequests();
+    } catch (e) {
+        alert("Lỗi xác nhận nạp tiền.");
     }
 }
 
@@ -426,11 +462,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(document.getElementById("tx-nan-btn")) document.getElementById("tx-nan-btn").onclick = function() {
         if(nanActive){
-            alert("Bạn đã nặn rồi!");
+            alert("Bạn đã nện rồi!");
             return;
         }
         nanActive = true;
-        alert("Bạn đã nặn! Tổng sẽ được nặn khi hết phiên.");
+        alert("Bạn đã nện! Tổng sẽ được nện khi hết phiên.");
         this.disabled = true;
     };
 
@@ -489,6 +525,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (document.getElementById('mainContent')) document.getElementById('mainContent').style.display = 'none';
         disableDepositWithdrawButtons();
         if (document.getElementById("userHistoryTableBody")) document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+    }
+
+    if (localStorage.getItem('is_admin') === '1') {
+        showAdminPanel();
+        loadAdminRequests();
     }
 });
 
