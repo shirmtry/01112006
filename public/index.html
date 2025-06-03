@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -72,7 +71,7 @@
     </div>
     <!-- Game chính -->
     <div id="mainContent" style="display:none;">
-        <div class="tx-main-container">
+        <div class="tx-main-container" id="tx-main-container">
             <div class="tx-header">
                 <div class="tx-title">TÀI XỈU <span class="tx-md5">MD5</span></div>
             </div>
@@ -92,7 +91,6 @@
                     <button id="withdrawBtn" disabled>Rút tiền</button>
                 </div>
             </div>
-            <!-- Lịch sử nạp/rút -->
             <div class="user-history-section">
                 <h3>Lịch sử Nạp/Rút của bạn</h3>
                 <table>
@@ -109,7 +107,6 @@
                     </tbody>
                 </table>
             </div>
-            <!-- GAME TÀI XỈU MD5 -->
             <div id="tx-game-ui">
                 <div class="tx-board">
                     <div class="tx-left" id="tx-tai-select">
@@ -142,13 +139,11 @@
                         <div class="tx-bet-total" id="tx-xiu-total">0</div>
                     </div>
                 </div>
-                <!-- Bet Input & Nặn -->
                 <div class="tx-bet-row">
                     <input type="number" id="tx-bet-amount" min="0" value="0" class="tx-bet-input" placeholder="0">
                     <button class="tx-bet-btn" id="tx-bet-btn">CƯỢC</button>
                     <button class="tx-nan-btn" id="tx-nan-btn">NẶN</button>
                 </div>
-                <!-- Quick Bet -->
                 <div class="tx-quick-row">
                     <button class="tx-quick-btn" data-amount="1000">1K</button>
                     <button class="tx-quick-btn" data-amount="5000">5K</button>
@@ -159,7 +154,6 @@
                     <button class="tx-quick-btn" data-amount="1000000">1M</button>
                     <button class="tx-quick-btn" data-amount="10000000">10M</button>
                 </div>
-                <!-- Result History & Copy -->
                 <div class="tx-result-row">
                     <div class="tx-result-label">KẾT QUẢ</div>
                     <div class="tx-result-list" id="tx-result-list"></div>
