@@ -1,11 +1,8 @@
 // =================== CONFIG ====================
-const API_BASE = "https://01112006.vercel.app/api";
-const API_USER = `${API_BASE}/user`;
-const API_REQUEST = `${API_BASE}/request`;
+const SHEETBEST_API = "https://api.sheetbest.com/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
+const SHEETBEST_USERS = SHEETBEST_API + "/users";
+const SHEETBEST_REQUESTS = SHEETBEST_API + "/requests";
 const ADMIN_USERNAMES = ["admin"];
-
-// Sheet.best endpoint (THAY BẰNG LINK CỦA BẠN)
-const SHEETBEST_API = "https://api.sheetbest.com/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // Ví dụ: "https://sheet.best/api/sheets/xxxxxx"
 
 // =================== HASH UTILITY ==================
 function hashString(str) {
@@ -35,7 +32,6 @@ function generateCaptcha(prefix = '') {
 }
 document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
-    // Click vào captcha đổi mã
     const loginCaptcha = document.getElementById('captchaDisplay');
     if (loginCaptcha) loginCaptcha.onclick = function() { generateCaptcha(); }
     const regCaptcha = document.getElementById('reg_captchaDisplay');
@@ -60,24 +56,6 @@ function randomCode(length = 7) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
-}
-
-// ===== GỬI LỊCH SỬ GIAO DỊCH LÊN SHEET.BEST ==========
-async function saveHistoryToSheet({username, amount, code, type}) {
-    const payload = {
-        username,
-        amount,
-        code,
-        type,
-        time: new Date().toLocaleString('vi-VN', { hour12: false })
-    };
-    try {
-        await fetch(SHEETBEST_API, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(payload)
-        });
-    } catch (e) {}
 }
 
 // =================== ĐĂNG KÝ/ĐĂNG NHẬP ===================
@@ -127,14 +105,13 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
         return;
     }
 
+    // Kiểm tra trùng username
     try {
-        const check = await fetch(`${API_USER}?username=${encodeURIComponent(username)}&t=${Date.now()}`);
-        if (check.ok) {
-            const found = await check.json();
-            if (Array.isArray(found) && found.some(u => u.username && u.username.toLowerCase() === username.toLowerCase())) {
-                showCustomAlert('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!');
-                return;
-            }
+        const check = await fetch(`${SHEETBEST_USERS}?username=${encodeURIComponent(username)}`);
+        const found = await check.json();
+        if (Array.isArray(found) && found.some(u => u.username && u.username.toLowerCase() === username.toLowerCase())) {
+            showCustomAlert('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!');
+            return;
         }
     } catch (e) {}
 
@@ -146,26 +123,23 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
     } catch (e) { ip = ""; }
 
     try {
-        const response = await fetch(API_USER, {
+        await fetch(SHEETBEST_USERS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username,
                 passwordHash: hashString(password),
-                ip
+                balance: 0,
+                ip,
+                role: "user"
             })
         });
-        const data = await response.json();
-        if (response.ok && data.success) {
-            showCustomAlert('Đăng ký thành công, bạn đã được đăng nhập!');
-            localStorage.setItem('current_user', username);
-            localStorage.setItem('is_admin', ADMIN_USERNAMES.includes(username) ? '1' : '');
-            document.getElementById("registerForm").style.display = "none";
-            document.getElementById("mainContent").style.display = "block";
-            await afterLoginOrRegister();
-        } else {
-            showCustomAlert(data.error || 'Lỗi đăng ký, thử lại sau!');
-        }
+        showCustomAlert('Đăng ký thành công, bạn đã được đăng nhập!');
+        localStorage.setItem('current_user', username);
+        localStorage.setItem('is_admin', ADMIN_USERNAMES.includes(username) ? '1' : '');
+        document.getElementById("registerForm").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+        await afterLoginOrRegister();
     } catch (e) {
         showCustomAlert('Lỗi kết nối, thử lại sau!');
     }
@@ -189,37 +163,17 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     }
 
     try {
-        const res = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
-        if (!res.ok) {
-            showCustomAlert('Tài khoản không tồn tại!');
+        const res = await fetch(`${SHEETBEST_USERS}?username=${encodeURIComponent(username)}`);
+        const users = await res.json();
+        const user = users && users.find(u => u.username === username);
+        if (!user || user.passwordHash !== hashString(password)) {
+            showCustomAlert('Tài khoản hoặc mật khẩu không đúng!');
             return;
         }
-        const user = await res.json();
-        if (!user || !user.username || user.passwordHash !== hashString(password)) {
-            showCustomAlert('Mật khẩu không đúng!');
-            return;
-        }
-
-        let ip = "";
-        try {
-            const ipres = await fetch("https://api.ipify.org?format=json");
-            const ipjson = await ipres.json();
-            ip = ipjson.ip || "";
-        } catch (e) { ip = ""; }
-        try {
-            await fetch(API_USER, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, ip })
-            });
-        } catch (e) {}
-
         localStorage.setItem('current_user', username);
         localStorage.setItem('is_admin', ADMIN_USERNAMES.includes(username) ? '1' : '');
-
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
-
         await afterLoginOrRegister();
     } catch (e) {
         showCustomAlert('Lỗi đăng nhập, thử lại sau!');
@@ -238,36 +192,33 @@ async function requestDeposit(username, amount) {
             showCustomAlert("Vui lòng nhập số tiền nạp hợp lệ (>= 1000)!");
             return;
         }
-        const res = await fetch(API_REQUEST, {
+        await fetch(SHEETBEST_REQUESTS, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+                timestamp: new Date().toLocaleString('vi-VN', { hour12: false }),
                 username,
                 type: "deposit",
                 amount,
                 status: "pending",
-                code
+                bank_code: code,
+                note: ""
             })
         });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            try {
-                const userRes = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
-                const user = await userRes.json();
-                let balance = parseInt(user.balance || 0) + parseInt(amount);
-                await fetch(API_USER, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, balance })
-                });
-                document.getElementById("userBalance").textContent = balance.toLocaleString();
-            } catch (e) {}
-            await saveHistoryToSheet({ username, amount, code, type: "deposit" });
-            showCustomAlert(`Gửi yêu cầu nạp tiền thành công!\nMã giao dịch: ${code}\nSố dư đã cộng tạm thời. Vui lòng chờ admin xác nhận.`);
-            await loadUserHistory(username);
-        } else {
-            showCustomAlert(data.error || "Lỗi gửi yêu cầu nạp tiền");
+        // Cộng tạm số dư user
+        const res = await fetch(`${SHEETBEST_USERS}?username=${encodeURIComponent(username)}`);
+        const users = await res.json();
+        if(users && users[0]) {
+            let balance = parseInt(users[0].balance || 0) + parseInt(amount);
+            await fetch(SHEETBEST_USERS, {
+                method: "PATCH",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ username, balance })
+            });
+            document.getElementById("userBalance").textContent = balance.toLocaleString();
         }
+        showCustomAlert(`Gửi yêu cầu nạp tiền thành công!\nMã giao dịch: ${code}\nSố dư đã cộng tạm thời. Vui lòng chờ admin xác nhận.`);
+        await loadUserHistory(username);
     } catch (e) {
         showCustomAlert("Lỗi kết nối máy chủ nạp tiền.");
     }
@@ -284,36 +235,33 @@ async function requestWithdraw(username, amount) {
             showCustomAlert("Vui lòng nhập số tiền rút hợp lệ (>= 1000)!");
             return;
         }
-        const res = await fetch(API_REQUEST, {
+        await fetch(SHEETBEST_REQUESTS, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+                timestamp: new Date().toLocaleString('vi-VN', { hour12: false }),
                 username,
                 type: "withdraw",
                 amount,
                 status: "pending",
-                code
+                bank_code: code,
+                note: ""
             })
         });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            try {
-                const userRes = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
-                const user = await userRes.json();
-                let balance = parseInt(user.balance || 0) - parseInt(amount);
-                await fetch(API_USER, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, balance })
-                });
-                document.getElementById("userBalance").textContent = balance.toLocaleString();
-            } catch (e) {}
-            await saveHistoryToSheet({ username, amount, code, type: "withdraw" });
-            showCustomAlert(`Gửi yêu cầu rút tiền thành công!\nMã giao dịch: ${code}\nSố dư đã trừ tạm thời. Vui lòng chờ admin xác nhận.`);
-            await loadUserHistory(username);
-        } else {
-            showCustomAlert(data.error || "Lỗi gửi yêu cầu rút tiền");
+        // Trừ tạm số dư user
+        const res = await fetch(`${SHEETBEST_USERS}?username=${encodeURIComponent(username)}`);
+        const users = await res.json();
+        if(users && users[0]) {
+            let balance = parseInt(users[0].balance || 0) - parseInt(amount);
+            await fetch(SHEETBEST_USERS, {
+                method: "PATCH",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ username, balance })
+            });
+            document.getElementById("userBalance").textContent = balance.toLocaleString();
         }
+        showCustomAlert(`Gửi yêu cầu rút tiền thành công!\nMã giao dịch: ${code}\nSố dư đã trừ tạm thời. Vui lòng chờ admin xác nhận.`);
+        await loadUserHistory(username);
     } catch (e) {
         showCustomAlert("Lỗi kết nối máy chủ rút tiền.");
     }
@@ -346,21 +294,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // =================== LỊCH SỬ GIAO DỊCH USER ===================
 async function loadUserHistory(username) {
-    if (!SHEETBEST_API || SHEETBEST_API === "YOUR_SHEETBEST_URL") {
-        document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa cấu hình sheet.best API</td></tr>';
-        return;
-    }
     try {
-        const res = await fetch(`${SHEETBEST_API}?username=${encodeURIComponent(username)}`);
+        const res = await fetch(`${SHEETBEST_REQUESTS}?username=${encodeURIComponent(username)}`);
         const history = await res.json();
         let html = '';
-        if (history && history.length > 0) {
+        if (history && history.length > 0 && history.some(item => item.timestamp || item.amount || item.bank_code)) {
             history.reverse().forEach(item => {
                 html += `<tr>
-                    <td>${item.time || ""}</td>
-                    <td>${item.type === "deposit" ? "Nạp" : (item.type === "withdraw" ? "Rút" : item.type)}</td>
-                    <td>${item.amount}</td>
-                    <td>${item.code}</td>
+                    <td>${item.timestamp || ""}</td>
+                    <td>${item.type === "deposit" ? "Nạp" : (item.type === "withdraw" ? "Rút" : (item.type || ''))}</td>
+                    <td>${item.amount || ""}</td>
+                    <td>${item.bank_code || ""}</td>
                 </tr>`;
             });
         } else {
@@ -372,67 +316,21 @@ async function loadUserHistory(username) {
     }
 }
 
-// ====== BỔ SUNG HÀM showCustomAlert, loadUserInfo, showAdminPanel ======
-function showCustomAlert(msg) {
-    alert(msg); // Bạn có thể thay thế bằng modal đẹp hơn nếu muốn
-}
-
-async function loadUserInfo(username) {
-    document.getElementById("userNameDisplay").textContent = username;
-    try {
-        const res = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
-        if (res.ok) {
-            const user = await res.json();
-            document.getElementById("userBalance").textContent = (user.balance || 0).toLocaleString();
-        }
-    } catch (e) {
-        document.getElementById("userBalance").textContent = "0";
-    }
-}
-
-function showAdminPanel() {
-    document.getElementById("adminPanel").style.display = "block";
-}
-
-// ========== INIT ON LOAD ==========
-document.addEventListener('DOMContentLoaded', async () => {
-    const currentUser = localStorage.getItem('current_user');
-    if (currentUser) {
-        document.getElementById('loginForm').style.display = 'none';
-        document.getElementById('mainContent').style.display = 'block';
-        await afterLoginOrRegister();
-    } else {
-        document.getElementById('loginForm').style.display = 'block';
-        document.getElementById('mainContent').style.display = 'none';
-        disableDepositWithdrawButtons();
-        document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
-    }
-});
-
-// ===== Sau đăng nhập/đăng ký xong =====
-async function afterLoginOrRegister() {
-    const username = localStorage.getItem('current_user');
-    await loadUserInfo(username);
-    enableDepositWithdrawButtons();
-    await loadUserHistory(username);
-    startGameTX();
-}
-
-
 // =================== GAME TÀI XỈU ===================
+
 // --- Cấu hình game ---
-const BET_AMOUNTS = [1000, 10000, 100000, 500000, 5000000, 10000000, 50000000]; // 1k, 10k, 100k, 500k, 5m, 10m, 50m
+const BET_AMOUNTS = [1000, 10000, 100000, 500000, 5000000, 10000000, 50000000];
 const GAME_BET_TIME = 30; // giây mỗi phiên
 
 let gameState = {
     round: 1,
     timeLeft: GAME_BET_TIME,
     isBetting: true,
-    bets: { tai: 0, xiu: 0 },   // tổng cược cả bàn
-    userBets: { tai: 0, xiu: 0 }, // chỉ user này
+    bets: { tai: 0, xiu: 0 },
+    userBets: { tai: 0, xiu: 0 },
     dice: [1, 1, 1],
-    history: [], // lịch sử {round, dice, sum, result}
-    userHistory: [] // lịch sử cược user
+    history: [],
+    userHistory: []
 };
 let gameInterval = null;
 
@@ -460,7 +358,6 @@ function renderQuickBets() {
     group.innerHTML = BET_AMOUNTS.map(v =>
         `<button type="button" class="quick-bet-btn" data-amount="${v}">${v >= 1000000 ? (v/1000000)+'m' : (v/1000)+'k'}</button>`
     ).join('');
-    // Gán sự kiện click
     group.querySelectorAll('.quick-bet-btn').forEach(btn => {
         btn.onclick = () => {
             document.getElementById('betAmount').value = btn.dataset.amount;
@@ -495,7 +392,7 @@ function placeBet(side) {
     document.getElementById('betTai').disabled = true;
     document.getElementById('betXiu').disabled = true;
     renderBets();
-    showCustomAlert(`Đã đặt cược ${side.toUpperCase()} ${amount.toLocaleString()}VNĐ cho phiên #${gameState.round}`);
+    showCustomAlert(`Đã đặt cược ${side.toUpperCase()} ${amount.toLocaleString()} VNĐ cho phiên #${gameState.round}`);
 }
 
 // --- Chạy đếm ngược/bắt đầu phiên ---
@@ -521,14 +418,12 @@ function startGameTX() {
 // --- Quay xúc xắc, tính kết quả, cập nhật lịch sử ---
 function settleGameTX() {
     gameState.isBetting = false;
-    // Xúc xắc
     let dice = [randomDice(), randomDice(), randomDice()];
     let sum = dice[0] + dice[1] + dice[2];
     let result = sum >= 11 && sum <= 17 ? 'tai' : 'xiu';
     gameState.dice = dice;
     renderDice(dice);
 
-    // Lưu lịch sử bàn
     gameState.history.unshift({
         round: gameState.round,
         dice: [...dice],
@@ -538,7 +433,6 @@ function settleGameTX() {
     if (gameState.history.length > 20) gameState.history.length = 20;
     renderHistory();
 
-    // Lưu lịch sử cược user
     if (gameState.userBets.tai > 0 || gameState.userBets.xiu > 0) {
         let win = 0;
         let lose = 0;
@@ -555,7 +449,6 @@ function settleGameTX() {
         });
         if (gameState.userHistory.length > 20) gameState.userHistory.length = 20;
         renderUserBetHistory();
-        // Cập nhật số dư
         let balance = parseInt(document.getElementById("userBalance").textContent.replace(/,/g,''));
         balance = balance + win - lose;
         document.getElementById("userBalance").textContent = balance.toLocaleString();
@@ -599,12 +492,30 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('betXiu').onclick = function() { placeBet('xiu'); };
     if (document.getElementById('placeBetBtn'))
         document.getElementById('placeBetBtn').onclick = function() {
-            // Show/hide quick bet group
             let group = document.getElementById('quickBetGroup');
             group.style.display = (group.style.display === 'block' ? 'none' : 'block');
         };
-    // Khởi động game khi đăng nhập
     if (document.getElementById('tx-game-container')) {
         startGameTX();
     }
 });
+
+// =================== CÁC HÀM HỖ TRỢ ===================
+function showCustomAlert(msg) {
+    alert(msg);
+}
+
+async function loadUserInfo(username) {
+    document.getElementById("userNameDisplay").textContent = username;
+    try {
+        const res = await fetch(`${SHEETBEST_USERS}?username=${encodeURIComponent(username)}`);
+        const users = await res.json();
+        if (users && users[0]) {
+            document.getElementById("userBalance").textContent = (users[0].balance || 0).toLocaleString();
+        }
+    } catch (e) {
+        document.getElementById("userBalance").textContent = "0";
+    }
+}
+
+fun
