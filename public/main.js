@@ -1,4 +1,4 @@
-/ =================== CONFIG API ====================
+// =================== CONFIG API ====================
 const API_BASE = "https://01112006.vercel.app/api";
 const API_USER = `${API_BASE}/user`;
 const API_REQUEST = `${API_BASE}/request`;
@@ -27,11 +27,21 @@ function generateCaptcha(prefix = '') {
     }
     const display = document.getElementById(prefix + 'captchaDisplay');
     if (display) display.textContent = captcha;
+    // Nếu là đăng ký thì cập nhật reg_captchaDisplay luôn
+    if (prefix === 'reg_') {
+        const regDisplay = document.getElementById('reg_captchaDisplay');
+        if (regDisplay) regDisplay.textContent = captcha;
+    }
 }
 
 // ========== INIT CAPTCHA ==========
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
+    // Cho phép click vào captcha để đổi mã mới
+    const loginCaptcha = document.getElementById('captchaDisplay');
+    if (loginCaptcha) loginCaptcha.onclick = function() { generateCaptcha(); }
+    const regCaptcha = document.getElementById('reg_captchaDisplay');
+    if (regCaptcha) regCaptcha.onclick = function() { generateCaptcha('reg_'); }
 });
 
 // =================== UI EVENT ======================
@@ -134,7 +144,7 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
             document.getElementById("mainContent").style.display = "block";
             await loadUserInfo(username);
             if (ADMIN_USERNAMES.includes(username)) showAdminPanel();
-            startGame();
+            if(typeof startGame === "function") startGame();
             document.getElementById('reg_username').value = '';
             document.getElementById('reg_password').value = '';
             document.getElementById('reg_password2').value = '';
@@ -200,7 +210,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
         if (ADMIN_USERNAMES.includes(username)) {
             showAdminPanel();
         }
-        startGame();
+        if(typeof startGame === "function") startGame();
         document.getElementById('username').value = '';
         document.getElementById('password').value = '';
         document.getElementById('captcha').value = '';
@@ -213,7 +223,6 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 // =================== NẠP/RÚT TIỀN ===================
 async function requestDeposit(username, amount) {
     try {
-        // Validate
         if (!username) {
             showCustomAlert("Bạn chưa đăng nhập!");
             return;
@@ -222,8 +231,6 @@ async function requestDeposit(username, amount) {
             showCustomAlert("Vui lòng nhập số tiền nạp hợp lệ (>= 1000)!");
             return;
         }
-
-        // Gửi yêu cầu nạp
         const res = await fetch(API_REQUEST, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -236,7 +243,6 @@ async function requestDeposit(username, amount) {
         });
         const data = await res.json();
         if (res.ok && data.success) {
-            // Cộng số dư tạm thời
             try {
                 const userRes = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
                 const user = await userRes.json();
@@ -259,7 +265,6 @@ async function requestDeposit(username, amount) {
 
 async function requestWithdraw(username, amount) {
     try {
-        // Validate
         if (!username) {
             showCustomAlert("Bạn chưa đăng nhập!");
             return;
@@ -268,8 +273,6 @@ async function requestWithdraw(username, amount) {
             showCustomAlert("Vui lòng nhập số tiền rút hợp lệ (>= 1000)!");
             return;
         }
-
-        // Gửi yêu cầu rút
         const res = await fetch(API_REQUEST, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -282,7 +285,6 @@ async function requestWithdraw(username, amount) {
         });
         const data = await res.json();
         if (res.ok && data.success) {
-            // Trừ số dư tạm thời
             try {
                 const userRes = await fetch(`${API_USER}?username=${encodeURIComponent(username)}`);
                 const user = await userRes.json();
@@ -305,7 +307,6 @@ async function requestWithdraw(username, amount) {
 
 // ========== Sự kiện nút nạp/rút ==========
 document.addEventListener('DOMContentLoaded', function() {
-    // Đảm bảo nút luôn được bật nếu đã đăng nhập
     const currentUser = localStorage.getItem('current_user');
     if (currentUser) enableDepositWithdrawButtons();
     else disableDepositWithdrawButtons();
@@ -363,7 +364,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (localStorage.getItem('is_admin') === '1') {
             showAdminPanel();
         }
-        startGame();
+        if(typeof startGame === "function") startGame();
         enableDepositWithdrawButtons();
     } else {
         document.getElementById('loginForm').style.display = 'block';
