@@ -1,5 +1,7 @@
-const SHEET_BEST_URL = "https://sheet.best/api/sheets/1_fvM8R8nmyY0WeYdJwBveYRxoFp3P6nIsa862X5GlCQ/tabs/requests";
+// --- Cấu hình ---
+const SHEET_BEST_URL = process.env.SHEETBEST_API_REQUEST || "https://sheet.best/api/sheets/1_fvM8R8nmyY0WeYdJwBveYRxoFp3P6nIsa862X5GlCQ/tabs/requests";
 
+// Tạo request nạp/rút hoặc lấy danh sách request
 export default async function handler(req, res) {
   // Nạp/rút (tạo request mới)
   if (req.method === 'POST') {
@@ -28,6 +30,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: e.message });
     }
   }
+
   // Lấy danh sách request (cho admin)
   if (req.method === 'GET') {
     try {
@@ -39,5 +42,12 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: e.message });
     }
   }
+
+  // Xóa request (nếu cần)
+  if (req.method === 'DELETE') {
+    // Sheet.best không hỗ trợ xóa hàng loạt, chỉ trả về thông báo
+    return res.status(200).json({ success: true, note: "sheet.best không hỗ trợ xoá hàng loạt. Hãy xóa thủ công trên Google Sheet nếu cần." });
+  }
+
   res.status(405).json({ error: "Phương thức không hỗ trợ." });
 }
