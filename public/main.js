@@ -1,4 +1,5 @@
-/ =================== CONFIG ====================
+
+// =================== CONFIG ====================
 const SHEETBEST_API = "https://api.sheetbest.com/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb";
 const SHEETBEST_USERS = SHEETBEST_API + "/users";
 const SHEETBEST_REQUESTS = SHEETBEST_API + "/requests";
@@ -17,25 +18,30 @@ function hashString(str) {
 }
 
 // =================== CAPTCHA =======================
+let currentCaptcha = "";
+let currentCaptchaReg = "";
 function generateCaptcha(prefix = '') {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let captcha = '';
     for (let i = 0; i < 5; i++) {
         captcha += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    const display = document.getElementById(prefix + 'captchaDisplay');
-    if (display) display.textContent = captcha;
-    if (prefix === 'reg_') {
+    if (prefix === "reg_") {
+        currentCaptchaReg = captcha;
         const regDisplay = document.getElementById('reg_captchaDisplay');
         if (regDisplay) regDisplay.textContent = captcha;
+    } else {
+        currentCaptcha = captcha;
+        const display = document.getElementById('captchaDisplay');
+        if (display) display.textContent = captcha;
     }
 }
 document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
     const loginCaptcha = document.getElementById('captchaDisplay');
-    if (loginCaptcha) loginCaptcha.onclick = function() { generateCaptcha(); }
+    if (loginCaptcha) loginCaptcha.onclick = function() { generateCaptcha(); };
     const regCaptcha = document.getElementById('reg_captchaDisplay');
-    if (regCaptcha) regCaptcha.onclick = function() { generateCaptcha('reg_'); }
+    if (regCaptcha) regCaptcha.onclick = function() { generateCaptcha('reg_'); };
 });
 
 // =================== ENABLE/DISABLE DEPOSIT/WITHDRAW BUTTONS ================
