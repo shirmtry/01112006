@@ -16,6 +16,26 @@
         return false;
       });
     </script>
+    <style>
+      .captcha-inputcode {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+      }
+      .captcha-img {
+          display: inline-block;
+          min-width: 70px;
+          padding: 6px 12px;
+          background: #f2f2f2;
+          border-radius: 5px;
+          border: 1px solid #e0e0e0;
+          font-weight: bold;
+          letter-spacing: 2px;
+          cursor: pointer;
+          user-select: none;
+          text-align: center;
+      }
+    </style>
 </head>
 <body>
     <!-- Đăng nhập/Đăng ký -->
@@ -34,7 +54,7 @@
                 <label class="captcha-label">Mã xác nhận:</label>
                 <div class="captcha-inputcode">
                     <input type="text" id="captcha" placeholder="Nhập mã">
-                    <span class="captcha-img" id="captchaDisplay"></span>
+                    <span class="captcha-img" id="captchaDisplay" title="Bấm để tạo mã mới"></span>
                 </div>
             </div>
             <div class="action-row">
@@ -60,7 +80,7 @@
                 <label class="captcha-label">Mã xác nhận:</label>
                 <div class="captcha-inputcode">
                     <input type="text" id="reg_captcha" placeholder="Nhập mã">
-                    <span class="captcha-img" id="reg_captchaDisplay"></span>
+                    <span class="captcha-img" id="reg_captchaDisplay" title="Bấm để tạo mã mới"></span>
                 </div>
             </div>
             <div class="action-row">
@@ -147,7 +167,6 @@
     <script src="main.js"></script>
     <script>
     // ==== BẢO ĐẢM NÚT NẠP/RÚT KHẢ DỤNG KHI ĐĂNG NHẬP ====
-    // Chạy sau main.js nếu cần fallback
     document.addEventListener('DOMContentLoaded', function() {
         function toggleDepositWithdrawBtns(isEnable) {
             var depositBtn = document.getElementById('depositBtn');
@@ -155,7 +174,6 @@
             if(depositBtn) depositBtn.disabled = !isEnable;
             if(withdrawBtn) withdrawBtn.disabled = !isEnable;
         }
-        // Lúc đầu nếu đã login thì enable luôn
         try {
             var currentUser = localStorage.getItem('current_user');
             if (currentUser) toggleDepositWithdrawBtns(true);
