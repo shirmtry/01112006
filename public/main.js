@@ -5,7 +5,7 @@ const API_REQUEST = `${API_BASE}/request`;
 const ADMIN_USERNAMES = ["admin"];
 
 // Sheet.best endpoint (THAY BẰNG LINK CỦA BẠN)
-const SHEETBEST_API = "YOUR_SHEETBEST_URL"; // Ví dụ: "https://sheet.best/api/sheets/xxxxxx"
+const SHEETBEST_API = "https://api.sheetbest.com/sheets/fd4ba63c-30b3-4a3d-b183-c82fa9f03cbb"; // Ví dụ: "https://sheet.best/api/sheets/xxxxxx"
 
 // =================== HASH UTILITY ==================
 function hashString(str) {
