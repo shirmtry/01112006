@@ -1,143 +1,148 @@
-
 const express = require('express');
 const router = express.Router();
-const {
-  appendBet,
-  getUserBalance,
-  setUserBalance,
-  getUserBets,
-} = require('./_googleSheet');
+const {google} = require('googleapis');
+const dayjs = require('dayjs');
 
-// ========== CONFIG ==========
-const BOT_COUNT = 1000;
-const BOT_PREFIX = "bot_";
-const BOT_BET_AMOUNT = 100000;
+// Helper functions to interact with Google Sheets
+const SHEET_ID = 'YOUR_SHEET_ID';
+const USERS_SHEET = 'users';
+const BETS_SHEET = 'bets';
 
-// ========== HELPERS ==========
-function getBotBetsPerSide() {
-  // 500 bot tài, 500 bot xỉu
-  const bots = [];
-  for (let i = 1; i <= BOT_COUNT; i++) {
-    const botUser = BOT_PREFIX + i;
-    const side = i <= BOT_COUNT / 2 ? "xiu" : "tai";
-    bots.push({ username: botUser, side });
-  }
-  return bots;
+async function getSheet(auth, sheetName) {
+  const sheets = google.sheets({version: 'v4', auth});
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: sheetName,
+  });
+  return res.data.values;
 }
 
-// ========== MAIN ROUTES ==========
+async function appendSheet(auth, sheetName, row) {
+  const sheets = google.sheets({version: 'v4', auth});
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: sheetName,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    resource: {values: [row]}
+  });
+}
 
-// [POST] /api/bet
+async function updateUserBalance(auth, username, delta) {
+  const data = await getSheet(auth, USERS_SHEET);
+  const header = data[0];
+  const idx = data.findIndex(row => row[0] === username);
+  if(idx < 0) throw new Error('User not found');
+  let balanceIdx = header.indexOf('balance');
+  let balance = parseInt(data[idx][balanceIdx] || 0);
+  balance += delta;
+  data[idx][balanceIdx] = balance;
+  const sheets = google.sheets({version: 'v4', auth});
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: USERS_SHEET + '!' + `A${idx+1}:E${idx+1}`,
+    valueInputOption: 'USER_ENTERED',
+    resource: {values: [data[idx]]}
+  });
+  return balance;
+}
+
+// Đặt cược (trừ tiền ngay)
 router.post('/', async (req, res) => {
+  const {username, side, amount, round} = req.body;
+  const auth = req.auth;
+  // Trừ tiền trước
   try {
-    let { username, side, amount, round, result, sum, isBotBatch } = req.body;
-    if (!username) return res.status(400).json({ error: 'username required' });
-    if (!side) return res.status(400).json({ error: 'side required' });
-    if (!amount) amount = BOT_BET_AMOUNT;
-    if (!round) round = 1;
-
-    // Luôn ghi lịch sử bet lên sheet cho user/bot (THÊM CỘT sum)
-    await appendBet({
-      timestamp: new Date().toLocaleString("en-US", { hour12: false }),
-      username,
-      side,
-      amount,
-      round,
-      result: result || "pending",
-      sum: sum ?? ""
-    });
-
-    // Nếu là batch của bot, chỉ ghi bet, không xử lý số dư
-    if (isBotBatch) return res.json({ ok: true });
-
-    // Nếu là user thật (username không phải bot_), xử lý win/lose và cập nhật balance
-    // Khi có user thật cược, user thật luôn thua (bots luôn thắng)
-    if (!username.startsWith(BOT_PREFIX)) {
-      // Khi user cược, tạo bet cho tất cả bot đối ứng (nếu chưa tạo)
-      const bots = getBotBetsPerSide();
-      for (const bot of bots) {
-        await appendBet({
-          timestamp: new Date().toLocaleString("en-US", { hour12: false }),
-          username: bot.username,
-          side: bot.side,
-          amount: BOT_BET_AMOUNT,
-          round,
-          result: bot.side === side ? "lose" : "win",
-          sum: sum ?? ""
-        });
-        // Cập nhật balance cho bot
-        let botBalance = await getUserBalance(bot.username) || 0;
-        botBalance += bot.side === side ? -BOT_BET_AMOUNT : BOT_BET_AMOUNT;
-        await setUserBalance(bot.username, botBalance);
-      }
-
-      // User luôn thua
-      let userBalance = await getUserBalance(username) || 0;
-      userBalance -= Number(amount);
-      await setUserBalance(username, userBalance);
-
-      // KHÔNG ghi thêm dòng lose lặp lại cho user nữa!
-
-      return res.json({ ok: true, userBalance });
-    }
-
-    // Nếu là bot: update balance cho bot (win/lose)
-    if (username.startsWith(BOT_PREFIX) && result) {
-      let botBalance = await getUserBalance(username) || 0;
-      botBalance += result === "win" ? Number(amount) : -Number(amount);
-      await setUserBalance(username, botBalance);
-    }
-
-    res.json({ ok: true });
+    const balance = await updateUserBalance(auth, username, -amount);
+    const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    await appendSheet(auth, BETS_SHEET, [
+      now, username, side, amount, round, 'pending', '', '', '', ''
+    ]);
+    res.json({ok:true, balance});
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.toString() });
+    res.status(400).json({error: e.message});
   }
 });
 
-// ========== AUTO BOT BET ==========
-// Gọi endpoint này để cho 1000 bot cược tự động mỗi round (nên gọi từ server hoặc cron job)
-router.post('/auto-bot', async (req, res) => {
-  try {
-    const { round } = req.body;
-    const bots = getBotBetsPerSide();
-    for (const bot of bots) {
-      await appendBet({
-        timestamp: new Date().toLocaleString("en-US", { hour12: false }),
-        username: bot.username,
-        side: bot.side,
-        amount: BOT_BET_AMOUNT,
-        round,
-        result: "pending",
-        sum: ""
+// Settle round (admin hoặc backend call, ví dụ khi hết phiên)
+router.post('/settle', async (req, res) => {
+  const {round, sum, dice1, dice2, dice3} = req.body;
+  const auth = req.auth;
+  const data = await getSheet(auth, BETS_SHEET);
+  const header = data[0];
+  let changed = [];
+  for(let i=1;i<data.length;i++) {
+    let row = data[i];
+    if(row[4]==round && row[5]=='pending') {
+      let side = row[2];
+      let amount = parseInt(row[3]);
+      let username = row[1];
+      let isTai = (sum>=11 && sum<=17);
+      let result = ((side==='tai' && isTai) || (side==='xiu' && !isTai)) ? 'win' : 'lose';
+      // Cộng lại tiền nếu thắng
+      if(result==='win') await updateUserBalance(auth, username, amount*2);
+      // Update dòng này
+      row[5] = result;
+      row[6] = sum;
+      row[7] = dice1;
+      row[8] = dice2;
+      row[9] = dice3;
+      changed.push({rowIdx:i, row});
+    }
+  }
+  // Ghi lại các dòng bet đã update
+  const sheets = google.sheets({version: 'v4', auth});
+  for(const c of changed) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: BETS_SHEET + '!' + `A${c.rowIdx+1}:J${c.rowIdx+1}`,
+      valueInputOption: 'USER_ENTERED',
+      resource: {values: [c.row]}
+    });
+  }
+  res.json({ok:true, changed: changed.length});
+});
+
+// Lấy lịch sử cược của user
+router.get('/history', async (req, res) => {
+  const username = req.query.username;
+  const auth = req.auth;
+  const data = await getSheet(auth, BETS_SHEET);
+  const header = data[0];
+  const result = [];
+  for(let i=1;i<data.length;i++) {
+    let row = data[i];
+    if(row[1]===username) {
+      result.push({
+        timestamp: row[0], username: row[1], side: row[2], amount: row[3],
+        round: row[4], result: row[5], sum: row[6], dice1: row[7], dice2: row[8], dice3: row[9]
       });
     }
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: e.toString() });
   }
+  res.json(result);
 });
 
-// ========== USER BET HISTORY ==========
-// [GET] /api/bet/history?username=...
-router.get('/history', async (req, res) => {
-  try {
-    const { username } = req.query;
-    if (!username) return res.status(400).json({ error: 'username required' });
-    const bets = await getUserBets(username);
-    // Đảm bảo trả về đúng trường, đúng thứ tự cho frontend hiển thị
-    const formatted = bets.map(bet => ({
-      time: bet.time || bet.timestamp || "",
-      bet_side: bet.bet_side || bet.side || "",
-      amount: bet.amount || "",
-      result: bet.result || "",
-      sum: bet.sum || "",
-      round: bet.round || ""
-    }));
-    res.json(formatted);
-  } catch (e) {
-    res.status(500).json({ error: e.toString() });
+// Lịch sử kết quả toàn hệ thống
+router.get('/all', async (req, res) => {
+  const auth = req.auth;
+  const data = await getSheet(auth, BETS_SHEET);
+  const header = data[0];
+  const result = [];
+  for(let i=1;i<data.length;i++) {
+    let row = data[i];
+    if(row[5]!=='pending') {
+      result.push({
+        timestamp: row[0], username: row[1], side: row[2], amount: row[3],
+        round: row[4], result: row[5], sum: row[6], dice1: row[7], dice2: row[8], dice3: row[9]
+      });
+    }
   }
+  // Lấy mỗi round 1 kết quả (của user đầu tiên đặt), hoặc group by round nếu muốn
+  let byRound = {};
+  for(const r of result) {
+    if(!byRound[r.round]) byRound[r.round] = r;
+  }
+  res.json(Object.values(byRound).sort((a,b)=>Number(a.round)-Number(b.round)));
 });
 
 module.exports = router;
