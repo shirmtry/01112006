@@ -9,9 +9,7 @@
     <link href="https://fonts.googleapis.com/css?family=Poppins:700,600,400&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- AUTH WRAPPER -->
     <div class="auth-wrapper" id="authWrapper">
-        <!-- LOGIN FORM -->
         <div class="login-form" id="loginForm">
             <h2>Đăng nhập</h2>
             <div class="form-group">
@@ -34,7 +32,6 @@
                 <button type="button" class="register-btn" id="showRegisterLink">Đăng ký</button>
             </div>
         </div>
-        <!-- REGISTER FORM -->
         <div class="register-form" id="registerForm" style="display:none;">
             <h2>Đăng ký</h2>
             <div class="form-group">
@@ -62,10 +59,8 @@
             </div>
         </div>
     </div>
-    <!-- MAIN CONTENT -->
     <div id="mainContent" style="display:none;">
         <div class="main-content-flex">
-            <!-- GAME AREA -->
             <div class="game-area">
                 <div class="tx-game-root">
                     <div class="tx-board">
@@ -80,11 +75,37 @@
                                     <span class="tx-timer-icon">⏰</span>
                                     <span id="tx-timer" class="tx-timer-digit">30</span><span class="tx-timer-unit">s</span>
                                 </div>
+                                <div class="tx-dice-3d-wrap" id="dice-3d-wrap">
+                                    <div class="tx-dice-3d" id="dice1">
+                                        <div class="face front">1</div>
+                                        <div class="face back">6</div>
+                                        <div class="face right">3</div>
+                                        <div class="face left">4</div>
+                                        <div class="face top">5</div>
+                                        <div class="face bottom">2</div>
+                                    </div>
+                                    <div class="tx-dice-3d" id="dice2">
+                                        <div class="face front">1</div>
+                                        <div class="face back">6</div>
+                                        <div class="face right">3</div>
+                                        <div class="face left">4</div>
+                                        <div class="face top">5</div>
+                                        <div class="face bottom">2</div>
+                                    </div>
+                                    <div class="tx-dice-3d" id="dice3">
+                                        <div class="face front">1</div>
+                                        <div class="face back">6</div>
+                                        <div class="face right">3</div>
+                                        <div class="face left">4</div>
+                                        <div class="face top">5</div>
+                                        <div class="face bottom">2</div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="tx-bet-row">
                                 <input type="number" id="tx-bet-amount" class="tx-bet-input" value="0" min="0" placeholder="Nhập số tiền cược">
                                 <button id="tx-bet-btn" class="tx-btn tx-btn-bet">CƯỢC</button>
-                                <button id="tx-nan-btn" class="tx-btn tx-btn-nan">NỆN</button>
+                                <button id="tx-nan-btn" class="tx-btn tx-btn-nan" disabled>NỆN</button>
                             </div>
                             <div class="tx-quick-bets">
                                 <button class="tx-quick-btn" data-amount="1000">1K</button>
@@ -109,7 +130,6 @@
                     </div>
                 </div>
             </div>
-            <!-- BELOW GAME AREA -->
             <div class="main-below-game">
                 <div class="tx-header">
                     <div class="tx-title">TÀI XỈU <span class="tx-md5">MD5</span></div>
@@ -180,7 +200,6 @@
             </div>
         </div>
     </div>
-    <!-- DEPOSIT PAGE -->
     <div id="depositPage" class="bank-page" style="display:none;">
         <form class="bank-form-ct" autocomplete="off" onsubmit="return false;">
             <button type="button" class="bank-exit-btn" id="depositPageCloseBtn">&times;</button>
@@ -202,7 +221,6 @@
             </div>
         </form>
     </div>
-    <!-- WITHDRAW PAGE -->
     <div id="withdrawPage" class="bank-page" style="display:none;">
         <form class="bank-form-ct" autocomplete="off" onsubmit="return false;">
             <button type="button" class="bank-exit-btn" id="withdrawPageCloseBtn">&times;</button>
