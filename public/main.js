@@ -69,6 +69,7 @@ document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
     document.body.classList.add('loaded');
 
+    // Form chuyển đổi
     if (document.getElementById('showRegisterLink')) document.getElementById('showRegisterLink').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById("loginForm").style.display = "none";
@@ -81,17 +82,130 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("registerForm").style.display = "none";
         generateCaptcha();
     });
+
+    // Đăng xuất
     if (document.getElementById('logoutBtn')) document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.removeItem('current_user');
         localStorage.removeItem('is_admin');
         document.getElementById("mainContent").style.display = "none";
+        document.getElementById("authWrapper").style.display = "flex";
         document.getElementById("loginForm").style.display = "block";
+        document.getElementById("registerForm").style.display = "none";
         document.getElementById('username').value = '';
         document.getElementById('password').value = '';
         document.getElementById('captcha').value = '';
         disableDepositWithdrawButtons();
         document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
         document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Chưa có dữ liệu</td></tr>';
+    });
+
+    // Đăng ký
+    if (document.getElementById('registerBtn')) document.getElementById('registerBtn').addEventListener('click', async () => {
+        const username = document.getElementById('reg_username').value.trim();
+        const password = document.getElementById('reg_password').value;
+        const password2 = document.getElementById('reg_password2').value;
+        const captcha = (document.getElementById('reg_captcha').value || '').trim().toUpperCase();
+        const captchaCode = (document.getElementById('reg_captchaDisplay').textContent || '').trim().toUpperCase();
+
+        if (!username || !password || !password2 || !captcha) {
+            alert('Vui lòng nhập đầy đủ thông tin.');
+            return;
+        }
+        if (password !== password2) {
+            alert('Mật khẩu nhập lại chưa khớp!');
+            return;
+        }
+        if (captcha !== captchaCode) {
+            alert('Mã captcha chưa đúng!');
+            generateCaptcha('reg_');
+            return;
+        }
+
+        // Kiểm tra tài khoản đã tồn tại chưa
+        try {
+            const check = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
+            const found = await check.json();
+            if ((found && found.username && found.username.toLowerCase() === username.toLowerCase()) ||
+                (Array.isArray(found) && found.some(u => u.username && u.username.toLowerCase() === username.toLowerCase()))
+            ) {
+                alert('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!');
+                return;
+            }
+        } catch (e) {}
+
+        try {
+            await fetch(API_USERS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username,
+                    passwordHash: hashString(password),
+                    balance: 0,
+                    role: "user"
+                })
+            });
+            alert('Đăng ký thành công, bạn đã được đăng nhập!');
+            localStorage.setItem('current_user', username);
+            document.getElementById("registerForm").style.display = "none";
+            document.getElementById("mainContent").style.display = "block";
+            document.getElementById("authWrapper").style.display = "none";
+            document.getElementById("userNameDisplay").textContent = username;
+            enableDepositWithdrawButtons();
+            await loadUserInfo(username);
+            await loadUserBetHistory(username);
+            await loadUserHistory(username);
+        } catch (e) {
+            alert('Lỗi kết nối, thử lại sau!');
+        }
+    });
+
+    // Đăng nhập
+    if (document.getElementById('loginBtn')) document.getElementById('loginBtn').addEventListener('click', async () => {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const captcha = (document.getElementById('captcha').value || '').trim().toUpperCase();
+        const captchaCode = (document.getElementById('captchaDisplay').textContent || '').trim().toUpperCase();
+
+        if (!username || !password || !captcha) {
+            alert('Vui lòng điền đầy đủ thông tin đăng nhập!');
+            return;
+        }
+        if (captcha !== captchaCode) {
+            alert('Mã captcha chưa đúng!');
+            generateCaptcha();
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
+            if (!res.ok) {
+                alert('Lỗi máy chủ, thử lại sau!');
+                return;
+            }
+            const user = await res.json();
+            // Phòng trường hợp API trả về object hoặc array
+            let u = user;
+            if (Array.isArray(user)) u = user.find(x => x.username && x.username === username);
+            if (!u || !u.passwordHash) {
+                alert('Tài khoản không tồn tại hoặc có dữ liệu lỗi!');
+                return;
+            }
+            if (u.passwordHash != hashString(password)) {
+                alert('Mật khẩu không đúng!');
+                return;
+            }
+            localStorage.setItem('current_user', username);
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            document.getElementById("authWrapper").style.display = "none";
+            document.getElementById("userNameDisplay").textContent = username;
+            enableDepositWithdrawButtons();
+            await loadUserInfo(username);
+            await loadUserBetHistory(username);
+            await loadUserHistory(username);
+        } catch (e) {
+            alert('Lỗi đăng nhập, thử lại sau!');
+        }
     });
 
     // Deposit popup
@@ -265,14 +379,20 @@ document.addEventListener("DOMContentLoaded", function() {
         alert("Đã copy kết quả!");
     };
 
-    // Init after login
+    // Init sau khi đăng nhập
     const currentUser = localStorage.getItem('current_user');
     if (currentUser) {
+        document.getElementById("authWrapper").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+        document.getElementById("userNameDisplay").textContent = currentUser;
         enableDepositWithdrawButtons();
+        loadUserInfo(currentUser);
         loadUserBetHistory(currentUser);
         loadUserHistory(currentUser);
     } else {
         disableDepositWithdrawButtons();
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("authWrapper").style.display = "flex";
     }
 
     // Game board
