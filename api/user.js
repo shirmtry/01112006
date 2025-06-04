@@ -65,7 +65,7 @@ async function deleteUser(username) {
   const [header, ...rows] = resp.data.values || [];
   const idx = rows.findIndex(r => (r[0] || '').toLowerCase() === username.toLowerCase());
   if (idx === -1) throw new Error('Không tìm thấy user');
-  // Cần xác định sheetId, giả sử sheet "users" là sheetId 0. Nếu không, cần lấy sheetId động.
+  // sheetId của "users" thường là 0, nếu không đúng cần lấy động.
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: SHEET_ID,
     resource: {
@@ -80,7 +80,6 @@ async function deleteUser(username) {
 
 // --- API endpoints ---
 
-// GET: /api/user?username=... hoặc /api/user?all=1
 router.get('/', async (req, res) => {
   try {
     const { username, all } = req.query;
@@ -95,7 +94,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST: /api/user
 router.post('/', async (req, res) => {
   try {
     const { username, passwordHash, balance = 0, ip = "", role = "user" } = req.body;
@@ -109,7 +107,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PATCH: /api/user
 router.patch('/', async (req, res) => {
   try {
     const { username, ...fields } = req.body;
@@ -121,7 +118,6 @@ router.patch('/', async (req, res) => {
   }
 });
 
-// DELETE: /api/user?username=...
 router.delete('/', async (req, res) => {
   try {
     const { username } = req.query;
