@@ -1,15 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const {google} = require('googleapis');
+const { google } = require('googleapis');
 const dayjs = require('dayjs');
 
-// Helper functions to interact with Google Sheets
-const SHEET_ID = 'YOUR_SHEET_ID';
+// Sử dụng biến môi trường để bảo mật thông tin
+const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const USERS_SHEET = 'users';
 const BETS_SHEET = 'bets';
 
+// Middleware: thêm auth Google Sheets vào req
+router.use(async (req, res, next) => {
+  if (!req.auth) {
+    const serviceAccountKey = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+    req.auth = new google.auth.GoogleAuth({
+      credentials: serviceAccountKey,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+  }
+  next();
+});
+
+// Helper: Lấy data 1 sheet
 async function getSheet(auth, sheetName) {
-  const sheets = google.sheets({version: 'v4', auth});
+  const client = await auth.getClient();
+  const sheets = google.sheets({ version: 'v4', auth: client });
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: sheetName,
@@ -17,132 +31,140 @@ async function getSheet(auth, sheetName) {
   return res.data.values;
 }
 
+// Helper: Thêm 1 dòng vào sheet
 async function appendSheet(auth, sheetName, row) {
-  const sheets = google.sheets({version: 'v4', auth});
+  const client = await auth.getClient();
+  const sheets = google.sheets({ version: 'v4', auth: client });
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
     range: sheetName,
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
-    resource: {values: [row]}
+    resource: { values: [row] },
   });
 }
 
+// Helper: Update số dư tài khoản user
 async function updateUserBalance(auth, username, delta) {
   const data = await getSheet(auth, USERS_SHEET);
   const header = data[0];
   const idx = data.findIndex(row => row[0] === username);
-  if(idx < 0) throw new Error('User not found');
+  if (idx < 0) throw new Error('User not found');
   let balanceIdx = header.indexOf('balance');
   let balance = parseInt(data[idx][balanceIdx] || 0);
   balance += delta;
+  if (balance < 0) throw new Error('Không đủ số dư');
   data[idx][balanceIdx] = balance;
-  const sheets = google.sheets({version: 'v4', auth});
+  const client = await auth.getClient();
+  const sheets = google.sheets({ version: 'v4', auth: client });
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
     range: USERS_SHEET + '!' + `A${idx+1}:E${idx+1}`,
     valueInputOption: 'USER_ENTERED',
-    resource: {values: [data[idx]]}
+    resource: { values: [data[idx]] },
   });
   return balance;
 }
 
 // Đặt cược (trừ tiền ngay)
 router.post('/', async (req, res) => {
-  const {username, side, amount, round} = req.body;
+  const { username, side, amount, round } = req.body;
   const auth = req.auth;
-  // Trừ tiền trước
+  if (!username || !side || !amount || !round) {
+    return res.status(400).json({ error: 'Thiếu dữ liệu đặt cược' });
+  }
   try {
     const balance = await updateUserBalance(auth, username, -amount);
     const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
     await appendSheet(auth, BETS_SHEET, [
       now, username, side, amount, round, 'pending', '', '', '', ''
     ]);
-    res.json({ok:true, balance});
+    res.json({ ok: true, balance });
   } catch (e) {
-    res.status(400).json({error: e.message});
+    res.status(400).json({ error: e.message });
   }
-});
-
-// Settle round (admin hoặc backend call, ví dụ khi hết phiên)
-router.post('/settle', async (req, res) => {
-  const {round, sum, dice1, dice2, dice3} = req.body;
-  const auth = req.auth;
-  const data = await getSheet(auth, BETS_SHEET);
-  const header = data[0];
-  let changed = [];
-  for(let i=1;i<data.length;i++) {
-    let row = data[i];
-    if(row[4]==round && row[5]=='pending') {
-      let side = row[2];
-      let amount = parseInt(row[3]);
-      let username = row[1];
-      let isTai = (sum>=11 && sum<=17);
-      let result = ((side==='tai' && isTai) || (side==='xiu' && !isTai)) ? 'win' : 'lose';
-      // Cộng lại tiền nếu thắng
-      if(result==='win') await updateUserBalance(auth, username, amount*2);
-      // Update dòng này
-      row[5] = result;
-      row[6] = sum;
-      row[7] = dice1;
-      row[8] = dice2;
-      row[9] = dice3;
-      changed.push({rowIdx:i, row});
-    }
-  }
-  // Ghi lại các dòng bet đã update
-  const sheets = google.sheets({version: 'v4', auth});
-  for(const c of changed) {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: BETS_SHEET + '!' + `A${c.rowIdx+1}:J${c.rowIdx+1}`,
-      valueInputOption: 'USER_ENTERED',
-      resource: {values: [c.row]}
-    });
-  }
-  res.json({ok:true, changed: changed.length});
 });
 
 // Lấy lịch sử cược của user
 router.get('/history', async (req, res) => {
-  const username = req.query.username;
+  const { username } = req.query;
   const auth = req.auth;
-  const data = await getSheet(auth, BETS_SHEET);
-  const header = data[0];
-  const result = [];
-  for(let i=1;i<data.length;i++) {
-    let row = data[i];
-    if(row[1]===username) {
-      result.push({
-        timestamp: row[0], username: row[1], side: row[2], amount: row[3],
-        round: row[4], result: row[5], sum: row[6], dice1: row[7], dice2: row[8], dice3: row[9]
-      });
-    }
+  try {
+    const data = await getSheet(auth, BETS_SHEET);
+    const header = data[0];
+    let results = data.slice(1).map(row => {
+      let obj = {};
+      header.forEach((h, i) => obj[h] = row[i] || '');
+      return obj;
+    });
+    if (username) results = results.filter(r => r.username === username);
+    res.json(results);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
-  res.json(result);
 });
 
-// Lịch sử kết quả toàn hệ thống
+// Lấy toàn bộ lịch sử cược (admin)
 router.get('/all', async (req, res) => {
   const auth = req.auth;
-  const data = await getSheet(auth, BETS_SHEET);
-  const header = data[0];
-  const result = [];
-  for(let i=1;i<data.length;i++) {
-    let row = data[i];
-    if(row[5]!=='pending') {
-      result.push({
-        timestamp: row[0], username: row[1], side: row[2], amount: row[3],
-        round: row[4], result: row[5], sum: row[6], dice1: row[7], dice2: row[8], dice3: row[9]
+  try {
+    const data = await getSheet(auth, BETS_SHEET);
+    const header = data[0];
+    let results = data.slice(1).map(row => {
+      let obj = {};
+      header.forEach((h, i) => obj[h] = row[i] || '');
+      return obj;
+    });
+    res.json(results);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Kết phiên, xử lý thắng/thua, cộng tiền nếu thắng
+router.post('/settle', async (req, res) => {
+  const { round, sum, dice1, dice2, dice3 } = req.body;
+  const auth = req.auth;
+  if (!round || sum === undefined || !dice1 || !dice2 || !dice3) {
+    return res.status(400).json({ error: 'Thiếu dữ liệu kết phiên' });
+  }
+  try {
+    const data = await getSheet(auth, BETS_SHEET);
+    let changed = [];
+    for (let i = 1; i < data.length; i++) {
+      let row = data[i];
+      if (row[4] == round && row[5] === 'pending') {
+        let side = row[2];
+        let amount = parseInt(row[3]);
+        let username = row[1];
+        let isTai = (sum >= 11 && sum <= 17);
+        let result = ((side === 'tai' && isTai) || (side === 'xiu' && !isTai)) ? 'win' : 'lose';
+        if (result === 'win') {
+          await updateUserBalance(auth, username, amount * 2);
+        }
+        row[5] = result;
+        row[6] = sum;
+        row[7] = dice1;
+        row[8] = dice2;
+        row[9] = dice3;
+        changed.push({ row, idx: i });
+      }
+    }
+    // Ghi lại các dòng vừa update
+    const client = await auth.getClient();
+    const sheetsApi = google.sheets({ version: 'v4', auth: client });
+    for (const { row, idx } of changed) {
+      await sheetsApi.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: BETS_SHEET + '!' + `A${idx+1}:J${idx+1}`,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: [row] }
       });
     }
+    res.json({ ok: true, settled: changed.length });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
-  // Lấy mỗi round 1 kết quả (của user đầu tiên đặt), hoặc group by round nếu muốn
-  let byRound = {};
-  for(const r of result) {
-    if(!byRound[r.round]) byRound[r.round] = r;
-  }
-  res.json(Object.values(byRound).sort((a,b)=>Number(a.round)-Number(b.round)));
 });
 
 module.exports = router;
