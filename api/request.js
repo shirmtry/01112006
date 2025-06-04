@@ -32,7 +32,6 @@ async function appendRequest(data) {
 
 // --- API endpoints ---
 
-// GET: /api/request (có thể thêm ?username=username để lọc theo user)
 router.get('/', async (req, res) => {
   try {
     const { username } = req.query;
@@ -47,7 +46,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST: /api/request
 router.post('/', async (req, res) => {
   try {
     const { username, type, amount, bank_code = "", note = "" } = req.body;
@@ -67,7 +65,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Không hỗ trợ các phương thức khác
 router.all('/', (req, res) => {
   res.status(405).json({ error: "Phương thức không hỗ trợ." });
 });
