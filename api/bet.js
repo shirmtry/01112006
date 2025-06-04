@@ -1,12 +1,12 @@
 
 const express = require('express');
 const router = express.Router();
-const { appendBet, updateBalance, getUserBalance, setUserBalance } = require('./_googleSheet');
+const { appendBet, getUserBalance, setUserBalance, getUserBets } = require('./_googleSheet');
 
 // ========== CONFIG ==========
 const BOT_COUNT = 1000;
 const BOT_PREFIX = "bot_";
-const BOT_BET_AMOUNT = 100000; // mỗi bot cược 100k, bạn có thể tăng/giảm tùy ý
+const BOT_BET_AMOUNT = 100000; // mỗi bot cược 100k
 
 // ========== HELPERS ==========
 function getBotBetsPerSide() {
@@ -25,20 +25,21 @@ function getBotBetsPerSide() {
 // [POST] /api/bet
 router.post('/', async (req, res) => {
   try {
-    let { username, side, amount, round, result, isBotBatch } = req.body;
+    let { username, side, amount, round, result, sum, isBotBatch } = req.body;
     if (!username) return res.status(400).json({ error: 'username required' });
     if (!side) return res.status(400).json({ error: 'side required' });
     if (!amount) amount = BOT_BET_AMOUNT;
     if (!round) round = 1;
 
-    // 1. Ghi lịch sử bet lên sheet cho user/bot
+    // 1. Ghi lịch sử bet lên sheet cho user/bot (THÊM CỘT sum)
     await appendBet({
       timestamp: new Date().toLocaleString("en-US", { hour12: false }),
       username,
       side,
       amount,
       round,
-      result: result || "pending"
+      result: result || "pending",
+      sum: sum ?? ""
     });
 
     // 2. Nếu là batch của bot, chỉ ghi bet, không xử lý số dư
@@ -46,9 +47,8 @@ router.post('/', async (req, res) => {
 
     // 3. Nếu là user thật (username không phải bot_), xử lý win/lose và cập nhật balance
     // Quy tắc: khi có user thật cược, user thật luôn thua (bots luôn thắng)
-    // Chỉ xử lý update balance khi result là win/lose
     if (!username.startsWith(BOT_PREFIX)) {
-      // a. Đầu tiên: khi user cược, tạo bet cho tất cả bot đối ứng (nếu chưa tạo)
+      // a. Khi user cược, tạo bet cho tất cả bot đối ứng (nếu chưa tạo)
       const bots = getBotBetsPerSide();
       for (const bot of bots) {
         await appendBet({
@@ -57,7 +57,8 @@ router.post('/', async (req, res) => {
           side: bot.side,
           amount: BOT_BET_AMOUNT,
           round,
-          result: bot.side === side ? "lose" : "win" // Bots luôn thắng, user luôn thua
+          result: bot.side === side ? "lose" : "win",
+          sum: sum ?? ""
         });
         // Cập nhật balance cho bot
         let botBalance = await getUserBalance(bot.username) || 0;
@@ -77,7 +78,8 @@ router.post('/', async (req, res) => {
         side,
         amount,
         round,
-        result: "lose"
+        result: "lose",
+        sum: sum ?? ""
       });
 
       return res.json({ ok: true, userBalance });
@@ -110,10 +112,25 @@ router.post('/auto-bot', async (req, res) => {
         side: bot.side,
         amount: BOT_BET_AMOUNT,
         round,
-        result: "pending"
+        result: "pending",
+        sum: ""
       });
     }
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.toString() });
+  }
+});
+
+// ========== USER BET HISTORY ==========
+// [GET] /api/bet/history?username=...
+router.get('/history', async (req, res) => {
+  try {
+    const { username } = req.query;
+    if (!username) return res.status(400).json({ error: 'username required' });
+    // getUserBets phải trả về đầy đủ các trường để hiện lịch sử cược
+    const bets = await getUserBets(username);
+    res.json(bets);
   } catch (e) {
     res.status(500).json({ error: e.toString() });
   }
