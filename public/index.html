@@ -76,61 +76,36 @@
                         <div class="tx-center-col">
                             <div class="tx-round">#<span id="tx-round-id">1</span></div>
                             <div class="tx-clock-wrap">
-                                <div class="tx-clock" id="tx-dial">
-                                    <div class="tx-clock-face">
-                                        <div class="tx-clock-num" id="tx-dial-num">12</div>
-                                        <div class="tx-clock-ticks">
-                                            <div class="tx-tick" style="transform: rotate(0deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(30deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(60deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(90deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(120deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(150deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(180deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(210deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(240deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(270deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(300deg) translateY(-70px);"></div>
-                                            <div class="tx-tick" style="transform: rotate(330deg) translateY(-70px);"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- 3D Dice Area (will be rendered by JS, can keep empty) -->
-                                <div class="tx-dice-3d-wrap">
-                                    <div class="tx-dice-3d" id="dice1"></div>
-                                    <div class="tx-dice-3d" id="dice2"></div>
-                                    <div class="tx-dice-3d" id="dice3"></div>
+                                <div class="tx-clock-timer-block">
+                                    <span class="tx-timer-icon">⏰</span>
+                                    <span id="tx-timer" class="tx-timer-digit">30</span><span class="tx-timer-unit">s</span>
                                 </div>
                             </div>
-                            <div class="tx-timer">
-                                <span class="tx-timer-icon">⏰</span>
-                                <span id="tx-timer">30</span>s
+                            <div class="tx-bet-row">
+                                <input type="number" id="tx-bet-amount" class="tx-bet-input" value="0" min="0" placeholder="Nhập số tiền cược">
+                                <button id="tx-bet-btn" class="tx-btn tx-btn-bet">CƯỢC</button>
+                                <button id="tx-nan-btn" class="tx-btn tx-btn-nan">NỆN</button>
+                            </div>
+                            <div class="tx-quick-bets">
+                                <button class="tx-quick-btn" data-amount="1000">1K</button>
+                                <button class="tx-quick-btn" data-amount="5000">5K</button>
+                                <button class="tx-quick-btn" data-amount="10000">10K</button>
+                                <button class="tx-quick-btn" data-amount="50000">50K</button>
+                                <button class="tx-quick-btn" data-amount="100000">100K</button>
+                                <button class="tx-quick-btn" data-amount="500000">500K</button>
+                                <button class="tx-quick-btn" data-amount="1000000">1M</button>
+                                <button class="tx-quick-btn" data-amount="10000000">10M</button>
+                            </div>
+                            <div class="tx-result-bar">
+                                <span class="tx-result-label">KẾT QUẢ</span>
+                                <div id="tx-result-list" class="tx-result-list"></div>
+                                <button id="tx-copy-btn" class="tx-copy-btn">COPY</button>
                             </div>
                         </div>
                         <div class="tx-col tx-xiu" id="tx-xiu-select">
                             <div class="tx-label">XỈU</div>
                             <div class="tx-total" id="tx-xiu-total">0</div>
                         </div>
-                    </div>
-                    <div class="tx-bet-row">
-                        <input type="number" id="tx-bet-amount" class="tx-bet-input" value="0" min="0">
-                        <button id="tx-bet-btn" class="tx-btn tx-btn-bet">CƯỢC</button>
-                        <button id="tx-nan-btn" class="tx-btn tx-btn-nan">NỆN</button>
-                    </div>
-                    <div class="tx-quick-bets">
-                        <button class="tx-quick-btn" data-amount="1000">1K</button>
-                        <button class="tx-quick-btn" data-amount="5000">5K</button>
-                        <button class="tx-quick-btn" data-amount="10000">10K</button>
-                        <button class="tx-quick-btn" data-amount="50000">50K</button>
-                        <button class="tx-quick-btn" data-amount="100000">100K</button>
-                        <button class="tx-quick-btn" data-amount="500000">500K</button>
-                        <button class="tx-quick-btn" data-amount="1000000">1M</button>
-                        <button class="tx-quick-btn" data-amount="10000000">10M</button>
-                    </div>
-                    <div class="tx-result-bar">
-                        <span class="tx-result-label">KẾT QUẢ</span>
-                        <div id="tx-result-list" class="tx-result-list"></div>
-                        <button id="tx-copy-btn" class="tx-copy-btn">COPY</button>
                     </div>
                 </div>
             </div>
