@@ -36,7 +36,7 @@ router.post('/', async (req, res) => {
     if (!amount) amount = BOT_BET_AMOUNT;
     if (!round) round = 1;
 
-    // Ghi lịch sử bet lên sheet cho user/bot (THÊM CỘT sum)
+    // Luôn ghi lịch sử bet lên sheet cho user/bot (THÊM CỘT sum)
     await appendBet({
       timestamp: new Date().toLocaleString("en-US", { hour12: false }),
       username,
@@ -76,16 +76,7 @@ router.post('/', async (req, res) => {
       userBalance -= Number(amount);
       await setUserBalance(username, userBalance);
 
-      // Ghi lại kết quả thua vào bet của user (nếu cần)
-      await appendBet({
-        timestamp: new Date().toLocaleString("en-US", { hour12: false }),
-        username,
-        side,
-        amount,
-        round,
-        result: "lose",
-        sum: sum ?? ""
-      });
+      // KHÔNG ghi thêm dòng lose lặp lại cho user nữa!
 
       return res.json({ ok: true, userBalance });
     }
@@ -134,7 +125,16 @@ router.get('/history', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: 'username required' });
     const bets = await getUserBets(username);
-    res.json(bets);
+    // Đảm bảo trả về đúng trường, đúng thứ tự cho frontend hiển thị
+    const formatted = bets.map(bet => ({
+      time: bet.time || bet.timestamp || "",
+      bet_side: bet.bet_side || bet.side || "",
+      amount: bet.amount || "",
+      result: bet.result || "",
+      sum: bet.sum || "",
+      round: bet.round || ""
+    }));
+    res.json(formatted);
   } catch (e) {
     res.status(500).json({ error: e.toString() });
   }
