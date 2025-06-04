@@ -1,8 +1,10 @@
+// ==================== API CONFIG ====================
 const API_USERS = "/api/user";
 const API_REQUESTS = "/api/request";
 const API_BETS = "/api/bet";
 const ADMIN_USERNAMES = ["admin"];
 
+// ==================== UTILS ====================
 function hashString(str) {
     let hash = 0;
     if (str.length === 0) return hash;
@@ -51,7 +53,7 @@ function disableDepositWithdrawButtons() {
     if(document.getElementById('openWithdrawPageBtn')) document.getElementById('openWithdrawPageBtn').disabled = true;
 }
 
-// Game state variables
+// ==================== GAME STATE ====================
 let round = 1;
 let timer = 30;
 let interval;
@@ -65,6 +67,7 @@ let dialNum = 12;
 let nanActive = false;
 const BET_AMOUNTS = [1000, 10000, 100000, 500000, 5000000, 10000000, 50000000];
 
+// ==================== MAIN ====================
 document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
     document.body.classList.add('loaded');
@@ -401,6 +404,7 @@ document.addEventListener("DOMContentLoaded", function() {
     startTimer();
 });
 
+// ==================== LỊCH SỬ NẠP/RÚT ====================
 async function loadUserHistory(username) {
     try {
         const res = await fetch(`${API_REQUESTS}?username=${encodeURIComponent(username)}`);
@@ -424,6 +428,7 @@ async function loadUserHistory(username) {
     }
 }
 
+// ==================== THÔNG TIN USER ====================
 async function loadUserInfo(username) {
     if (document.getElementById("userNameDisplay")) document.getElementById("userNameDisplay").textContent = username;
     try {
@@ -437,17 +442,18 @@ async function loadUserInfo(username) {
     }
 }
 
+// ==================== LỊCH SỬ CƯỢC ====================
 async function loadUserBetHistory(username) {
     try {
         const res = await fetch(`/api/bet/history?username=${encodeURIComponent(username)}`);
         const bets = await res.json();
         let html = '';
         if(Array.isArray(bets) && bets.length) {
-            bets.reverse().forEach(bet => {
+            bets.forEach(bet => {
                 html += `<tr>
-                    <td>${bet.time || bet.timestamp || ''}</td>
-                    <td>${(bet.bet_side || bet.side)?.toUpperCase() || ''} (${Number(bet.amount).toLocaleString() || ''})</td>
-                    <td>${bet.result === 'win' ? 'TÀI' : (bet.result === 'lose' ? 'XỈU' : '-')}</td>
+                    <td>${bet.timestamp || bet.time || ''}</td>
+                    <td>${(bet.side || bet.bet_side)?.toUpperCase() || ''} (${Number(bet.amount).toLocaleString() || ''})</td>
+                    <td>${bet.result === 'win' ? '<b style="color:var(--win-color)">Thắng</b>' : (bet.result === 'lose' ? '<b style="color:var(--lose-color)">Thua</b>' : 'Đang chờ')}</td>
                     <td>${bet.sum || ''} ${bet.dice1 ? `(${bet.dice1}-${bet.dice2}-${bet.dice3})` : ''}</td>
                     <td>${bet.result === 'win'
                         ? '<b style="color:var(--win-color)">Thắng</b>'
@@ -465,6 +471,7 @@ async function loadUserBetHistory(username) {
     }
 }
 
+// ==================== GAME BOARD ====================
 function updateBoard() {
     if (document.getElementById("tx-round-id")) document.getElementById("tx-round-id").textContent = round;
     if (document.getElementById("tx-timer")) document.getElementById("tx-timer").textContent = timer;
@@ -537,7 +544,7 @@ function randDice() {
     return Math.floor(Math.random()*6)+1;
 }
 
-// Result history page functions
+// ==================== RESULT HISTORY PAGE ====================
 function renderResultHistoryDiv(allResults) {
     let html = `<div class="result-history-title"><b>KẾT QUẢ</b></div>
     <div class="result-balls-row">`;
@@ -558,7 +565,7 @@ function renderResultHistoryDiv(allResults) {
     };
 }
 
-// 3D Dice functions
+// ============= 3D Dice functions ================
 function renderDice3D(elem, value) {
     elem.innerHTML = `
     <div class="dice3d-3d" style="transform: ${dice3DRotation(value)};">
