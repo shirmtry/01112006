@@ -1,3 +1,4 @@
+
 const API_USERS = "/api/user";
 const API_REQUESTS = "/api/request";
 const ADMIN_USERNAMES = ["admin"];
@@ -413,6 +414,7 @@ async function afterLoginOrRegister() {
     startTimer();
 }
 
+// Game tài xỉu logic
 const BET_AMOUNTS_MD5 = [1000, 5000, 10000, 50000, 100000, 500000, 1000000, 10000000];
 let round = 1;
 let timer = 30;
