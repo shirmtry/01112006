@@ -3,7 +3,6 @@ const router = express.Router();
 const { google } = require('googleapis');
 const dayjs = require('dayjs');
 
-// Lấy thông tin từ biến môi trường
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const USERS_SHEET = 'users';
 const BETS_SHEET = 'bets';
@@ -50,7 +49,6 @@ async function getSheetData(auth, sheetName) {
 async function appendSheetData(auth, sheetName, rowObj) {
   const client = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: client });
-  // Đảm bảo thứ tự cột theo header
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: sheetName,
@@ -78,7 +76,6 @@ async function updateUserBalance(auth, username, delta) {
   // Update Google Sheet
   const client = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: client });
-  // Lấy lại header để xác định cột balance (phòng trường hợp header thay đổi)
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: USERS_SHEET,
@@ -123,14 +120,12 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ========== API: Lấy lịch sử cược của user ==========
 router.get('/history', async (req, res) => {
   const auth = req.auth;
   const { username } = req.query;
   if (!username) return res.status(400).json({ error: 'Thiếu username' });
   try {
     const bets = await getSheetData(auth, BETS_SHEET);
-    // Sắp xếp mới nhất lên đầu
     const result = bets.filter(bet => bet.username === username).reverse();
     res.json(result);
   } catch (e) {
@@ -138,7 +133,6 @@ router.get('/history', async (req, res) => {
   }
 });
 
-// ========== API: Lấy toàn bộ lịch sử cược (admin) ==========
 router.get('/all', async (req, res) => {
   const auth = req.auth;
   try {
@@ -149,7 +143,6 @@ router.get('/all', async (req, res) => {
   }
 });
 
-// ========== API: Settle round (xử lý thắng/thua, cộng tiền nếu thắng) ==========
 router.post('/settle', async (req, res) => {
   const { round, sum, dice1, dice2, dice3 } = req.body;
   const auth = req.auth;
@@ -157,7 +150,6 @@ router.post('/settle', async (req, res) => {
     return res.status(400).json({ error: 'Thiếu dữ liệu kết phiên' });
   }
   try {
-    // Load dữ liệu bets
     const client = await auth.getClient();
     const sheetsApi = google.sheets({ version: 'v4', auth: client });
     const resBets = await sheetsApi.spreadsheets.values.get({
@@ -176,16 +168,13 @@ router.post('/settle', async (req, res) => {
         let isTai = (sum >= 11 && sum <= 17);
         let result = ((side === 'tai' && isTai) || (side === 'xiu' && !isTai)) ? 'win' : 'lose';
         if (result === 'win') {
-          // Cộng lại tiền thắng (tiền thắng = amount * 2)
           await updateUserBalance(auth, username, amount * 2);
         }
-        // Update dòng bet
         row[5] = result;
         row[6] = sum;
         row[7] = dice1;
         row[8] = dice2;
         row[9] = dice3;
-        // Ghi lại lên Google Sheets
         await sheetsApi.spreadsheets.values.update({
           spreadsheetId: SHEET_ID,
           range: BETS_SHEET + '!' + `A${i+1}:J${i+1}`,
