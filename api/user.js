@@ -1,6 +1,10 @@
+const express = require('express');
+const router = express.Router();
 const { getSheetsClient, SHEET_ID } = require('./_googleSheet');
+
 const SHEET_NAME = 'users';
 
+// --- Helper functions ---
 async function getUsers() {
   const sheets = await getSheetsClient();
   const resp = await sheets.spreadsheets.values.get({
@@ -22,7 +26,7 @@ async function appendUser(data) {
     range: SHEET_NAME,
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [data] }
+    resource: { values: [data] }
   });
 }
 
@@ -42,7 +46,7 @@ async function updateUser(username, fields) {
     spreadsheetId: SHEET_ID,
     range: `${SHEET_NAME}!A2`,
     valueInputOption: 'USER_ENTERED',
-    requestBody: { values: rows }
+    resource: { values: rows }
   });
 }
 
@@ -55,9 +59,10 @@ async function deleteUser(username) {
   const [header, ...rows] = resp.data.values || [];
   const idx = rows.findIndex(r => (r[0] || '').toLowerCase() === username.toLowerCase());
   if (idx === -1) throw new Error('Không tìm thấy user');
+  // Cần xác định sheetId, giả sử sheet "users" là sheetId 0. Nếu không, cần lấy sheetId động.
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: SHEET_ID,
-    requestBody: {
+    resource: {
       requests: [{
         deleteDimension: {
           range: { sheetId: 0, dimension: "ROWS", startIndex: idx + 1, endIndex: idx + 2 }
@@ -67,40 +72,60 @@ async function deleteUser(username) {
   });
 }
 
-module.exports = async (req, res) => {
+// --- API endpoints ---
+
+// GET: /api/user?username=... hoặc /api/user?all=1
+router.get('/', async (req, res) => {
   try {
-    if (req.method === 'GET') {
-      const { username, all } = req.query;
-      const users = await getUsers();
-      if (all) return res.status(200).json(users);
-      if (!username) return res.status(400).json({ error: "Thiếu username." });
-      const user = users.find(u => (u.username || '').toLowerCase() === username.toLowerCase());
-      if (!user) return res.status(404).json({ error: "Không tìm thấy user." });
-      return res.status(200).json(user);
-    }
-    if (req.method === 'POST') {
-      const { username, passwordHash, balance = 0, ip, role = "user" } = req.body;
-      if (!username || !passwordHash) return res.status(400).json({ error: "Thiếu username hoặc password." });
-      const users = await getUsers();
-      if (users.some(u => (u.username || '').toLowerCase() === username.toLowerCase()))
-        return res.status(400).json({ error: "Username đã tồn tại." });
-      await appendUser([username, passwordHash, balance, ip, role]);
-      return res.status(201).json({ success: true });
-    }
-    if (req.method === 'PATCH') {
-      const { username, ...fields } = req.body;
-      if (!username) return res.status(400).json({ error: "Thiếu username." });
-      await updateUser(username, fields);
-      return res.status(200).json({ success: true });
-    }
-    if (req.method === 'DELETE') {
-      const { username } = req.query;
-      if (!username) return res.status(400).json({ error: "Thiếu username." });
-      await deleteUser(username);
-      return res.status(200).json({ success: true });
-    }
-    res.status(405).json({ error: "Phương thức không hỗ trợ." });
+    const { username, all } = req.query;
+    const users = await getUsers();
+    if (all) return res.status(200).json(users);
+    if (!username) return res.status(400).json({ error: "Thiếu username." });
+    const user = users.find(u => (u.username || '').toLowerCase() === username.toLowerCase());
+    if (!user) return res.status(404).json({ error: "Không tìm thấy user." });
+    return res.status(200).json(user);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-};
+});
+
+// POST: /api/user
+router.post('/', async (req, res) => {
+  try {
+    const { username, passwordHash, balance = 0, ip, role = "user" } = req.body;
+    if (!username || !passwordHash) return res.status(400).json({ error: "Thiếu username hoặc password." });
+    const users = await getUsers();
+    if (users.some(u => (u.username || '').toLowerCase() === username.toLowerCase()))
+      return res.status(400).json({ error: "Username đã tồn tại." });
+    await appendUser([username, passwordHash, balance, ip, role]);
+    return res.status(201).json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH: /api/user
+router.patch('/', async (req, res) => {
+  try {
+    const { username, ...fields } = req.body;
+    if (!username) return res.status(400).json({ error: "Thiếu username." });
+    await updateUser(username, fields);
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE: /api/user?username=...
+router.delete('/', async (req, res) => {
+  try {
+    const { username } = req.query;
+    if (!username) return res.status(400).json({ error: "Thiếu username." });
+    await deleteUser(username);
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+module.exports = router;
