@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { google } = require('googleapis');
 const cors = require('cors');
@@ -5,13 +6,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID;
+
+let serviceAccountKey;
+try {
+  serviceAccountKey = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+} catch (e) {
+  console.error('Invalid GOOGLE_SERVICE_ACCOUNT_KEY. Must be valid JSON string.');
+  process.exit(1);
+}
+
 const auth = new google.auth.GoogleAuth({
-  keyFile: 'service-account.json',
+  credentials: serviceAccountKey,
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 const sheets = google.sheets('v4');
-
-const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID';
 
 // Helper: Lấy toàn bộ dữ liệu từ 1 sheet
 async function getSheetData(sheetName) {
@@ -50,59 +59,92 @@ async function appendSheetData(sheetName, rowObj) {
 
 // USERS - Đăng ký, đăng nhập
 app.get('/googleapi/users', async (req, res) => {
-  const { username } = req.query;
-  const data = await getSheetData('users');
-  res.json(data.filter(u => !username || u.username === username));
+  try {
+    const { username } = req.query;
+    const data = await getSheetData('users');
+    res.json(data.filter(u => !username || u.username === username));
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
 });
 app.post('/googleapi/users', async (req, res) => {
-  await appendSheetData('users', req.body);
-  res.json({ status: 'ok' });
+  try {
+    await appendSheetData('users', req.body);
+    res.json({ status: 'ok' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
 });
 
 // REQUESTS - Nạp/Rút
 app.get('/googleapi/requests', async (req, res) => {
-  const { username } = req.query;
-  const data = await getSheetData('requests');
-  res.json(data.filter(r => !username || r.username === username));
+  try {
+    const { username } = req.query;
+    const data = await getSheetData('requests');
+    res.json(data.filter(r => !username || r.username === username));
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
 });
 app.post('/googleapi/requests', async (req, res) => {
-  await appendSheetData('requests', req.body);
-  res.json({ status: 'ok' });
+  try {
+    await appendSheetData('requests', req.body);
+    res.json({ status: 'ok' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
 });
 
 // BETS - Lịch sử cược
 app.get('/googleapi/bets/history', async (req, res) => {
-  const { username } = req.query;
-  const data = await getSheetData('bets');
-  res.json(data.filter(r => !username || r.username === username));
+  try {
+    const { username } = req.query;
+    const data = await getSheetData('bets');
+    res.json(data.filter(r => !username || r.username === username));
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
 });
 app.get('/googleapi/bets/all', async (req, res) => {
-  const data = await getSheetData('bets');
-  res.json(data);
+  try {
+    const data = await getSheetData('bets');
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
 });
 app.post('/googleapi/bets', async (req, res) => {
-  await appendSheetData('bets', req.body);
-  res.json({ status: 'ok' });
+  try {
+    await appendSheetData('bets', req.body);
+    res.json({ status: 'ok' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
 });
 
-// PATCH balance user (nâng cao: bạn nên dùng transaction/logic backend mạnh hơn, đây chỉ demo)
+// PATCH balance user
 app.patch('/googleapi/users', async (req, res) => {
-  const { username, balance } = req.body;
-  const client = await auth.getClient();
-  const data = await getSheetData('users');
-  const idx = data.findIndex(user => user.username === username);
-  if (idx === -1) return res.status(404).json({ error: 'User not found' });
+  try {
+    const { username, balance } = req.body;
+    const client = await auth.getClient();
+    const data = await getSheetData('users');
+    const idx = data.findIndex(user => user.username === username);
+    if (idx === -1) return res.status(404).json({ error: 'User not found' });
 
-  // Update balance
-  const rowIndex = idx + 2; // +2 vì header là dòng 1
-  await sheets.spreadsheets.values.update({
-    auth: client,
-    spreadsheetId: SPREADSHEET_ID,
-    range: `users!C${rowIndex}`, // C = balance
-    valueInputOption: 'USER_ENTERED',
-    resource: { values: [[String(balance)]] }
-  });
-  res.json({ status: 'ok' });
+    // Update balance
+    const rowIndex = idx + 2; // +2 vì header là dòng 1
+    await sheets.spreadsheets.values.update({
+      auth: client,
+      spreadsheetId: SPREADSHEET_ID,
+      range: `users!C${rowIndex}`, // C = balance
+      valueInputOption: 'USER_ENTERED',
+      resource: { values: [[String(balance)]] }
+    });
+    res.json({ status: 'ok' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
 });
 
-app.listen(3000, () => console.log('API server running on port 3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log('API server running on port ' + PORT));
