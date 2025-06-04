@@ -2,6 +2,7 @@
 // ======= API CONST & UTILS =======
 const API_USERS = "/api/user";
 const API_REQUESTS = "/api/request";
+const API_BETS = "/api/bet";
 const ADMIN_USERNAMES = ["admin"];
 
 function hashString(str) {
@@ -78,6 +79,7 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('captcha').value = '';
         disableDepositWithdrawButtons();
         document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Chưa có dữ liệu</td></tr>';
     });
 
     // Nạp tiền
@@ -125,7 +127,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     amount,
                     bank_code: code,
                     note: "",
-                    status: "pending"
+                    status: "pending",
+                    timestamp: new Date().toLocaleString()
                 })
             });
             alert("Gửi yêu cầu nạp tiền thành công! Vui lòng chờ admin xác nhận.");
@@ -188,7 +191,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     amount,
                     bank_code: "",
                     note: `Ngân hàng: ${bank}, Số TK: ${acc}, Chủ TK: ${holder}`,
-                    status: "pending"
+                    status: "pending",
+                    timestamp: new Date().toLocaleString()
                 })
             });
             alert("Gửi yêu cầu rút tiền thành công! Số dư đã trừ, vui lòng chờ xác nhận từ admin.");
@@ -199,11 +203,16 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     const currentUser = localStorage.getItem('current_user');
-    if (currentUser) enableDepositWithdrawButtons();
-    else disableDepositWithdrawButtons();
+    if (currentUser) {
+        enableDepositWithdrawButtons();
+        loadUserBetHistory(currentUser);
+    } else {
+        disableDepositWithdrawButtons();
+    }
     if (localStorage.getItem('is_admin') === '1') {
         showAdminPanel();
-        loadAdminRequests();
+        loadAdminRequestsTable();
+        loadAdminBetsTable();
     }
 });
 
@@ -350,72 +359,122 @@ async function loadUserInfo(username) {
     }
 }
 
-async function loadAdminRequests() {
-    if (!document.getElementById('adminRequests')) return;
+// Lịch sử cược của user
+async function loadUserBetHistory(username) {
     try {
-        const res = await fetch(`${API_REQUESTS}?type=deposit&status=pending`);
-        const requests = await res.json();
+        const res = await fetch(`${API_BETS}?username=${encodeURIComponent(username)}`);
+        const bets = await res.json();
         let html = '';
-        if (Array.isArray(requests) && requests.length) {
-            requests.forEach((req) => {
-                html += `<li>
-                    <b>${req.username}</b> - ${req.amount.toLocaleString()} VNĐ - Mã: ${req.bank_code}
-                    <button class="admin-confirm-deposit" data-id="${req._id}" data-username="${req.username}" data-amount="${req.amount}">Xác nhận</button>
-                </li>`;
+        if(Array.isArray(bets) && bets.length) {
+            bets.reverse().forEach(bet => {
+                html += `<tr>
+                    <td>${bet.time || ''}</td>
+                    <td>${bet.bet_side?.toUpperCase() || ''} (${bet.amount?.toLocaleString()})</td>
+                    <td>${bet.result === 'win' ? '<b style="color:var(--win-color)">Thắng</b>' : (bet.result === 'lose' ? '<b style="color:var(--lose-color)">Thua</b>' : 'Đang chờ')}</td>
+                    <td>${bet.sum || ''}</td>
+                    <td>${bet.result}</td>
+                </tr>`;
             });
         } else {
-            html = '<li>Không có yêu cầu nạp tiền chờ duyệt.</li>';
+            html = '<tr><td colspan="5">Chưa có dữ liệu</td></tr>';
         }
-        document.getElementById('adminRequests').innerHTML = html;
-        document.querySelectorAll('.admin-confirm-deposit').forEach(btn => {
-            btn.onclick = async function() {
-                const id = this.getAttribute('data-id');
-                const username = this.getAttribute('data-username');
-                const amount = parseInt(this.getAttribute('data-amount'));
-                await adminConfirmDeposit(id, username, amount);
-            };
-        });
+        document.querySelector('#userStatsTable tbody').innerHTML = html;
     } catch (e) {
-        document.getElementById('adminRequests').innerHTML = '<li>Lỗi tải danh sách yêu cầu.</li>';
+        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Không tải được</td></tr>';
     }
 }
 
-async function adminConfirmDeposit(requestId, username, amount) {
-    try {
-        const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
-        const user = await res.json();
-        if (!user || !user.username) {
-            alert("Không tìm thấy user.");
-            return;
-        }
-        const newBalance = parseInt(user.balance || 0) + parseInt(amount);
-        await fetch(API_USERS, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, balance: newBalance })
-        });
-        await fetch(`${API_REQUESTS}/${requestId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "done" })
-        });
-        alert(`Đã cộng ${amount.toLocaleString()} VNĐ cho user ${username}`);
-        loadAdminRequests();
-    } catch (e) {
-        alert("Lỗi xác nhận nạp tiền.");
-    }
-}
-
+// Admin panel
 function showAdminPanel() {
     if (document.getElementById("adminPanel")) document.getElementById("adminPanel").style.display = "block";
 }
 
+// Yêu cầu nạp/rút table cho admin
+async function loadAdminRequestsTable() {
+    if (!document.getElementById('adminRequestsTable')) return;
+    try {
+        const res = await fetch(`${API_REQUESTS}`);
+        const reqs = await res.json();
+        let html = '';
+        if(Array.isArray(reqs) && reqs.length) {
+            reqs.reverse().forEach(req => {
+                html += `<tr>
+                    <td>${req.timestamp || ''}</td>
+                    <td>${req.username || ''}</td>
+                    <td>${req.type === "deposit" ? "Nạp" : (req.type === "withdraw" ? "Rút" : req.type)}</td>
+                    <td>${req.amount?.toLocaleString() || ''}</td>
+                    <td>${req.bank_code || ''}</td>
+                    <td>
+                      <span class="status ${req.status}">${req.status}</span>
+                      ${
+                        req.status === 'pending'
+                        ? `<button onclick="adminApproveRequest('${req._id}','done')">Duyệt</button>
+                           <button onclick="adminApproveRequest('${req._id}','rejected')">Hủy</button>`
+                        : ''
+                      }
+                    </td>
+                </tr>`;
+            });
+        } else {
+            html = '<tr><td colspan="6">Không có yêu cầu nào</td></tr>';
+        }
+        document.querySelector('#adminRequestsTable tbody').innerHTML = html;
+    } catch (e) {
+        document.querySelector('#adminRequestsTable tbody').innerHTML = '<tr><td colspan="6">Không tải được</td></tr>';
+    }
+}
+
+// Duyệt/hủy nạp/rút
+window.adminApproveRequest = async function(requestId, status){
+    await fetch(`${API_REQUESTS}/${requestId}`, {
+        method: "PATCH",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({status})
+    });
+    await loadAdminRequestsTable();
+}
+
+// Admin xem lịch sử cược toàn hệ thống
+async function loadAdminBetsTable() {
+    if (!document.getElementById('adminBetsTable')) return;
+    try {
+        const res = await fetch(`${API_BETS}`);
+        const bets = await res.json();
+        let html = '';
+        if(Array.isArray(bets) && bets.length) {
+            bets.reverse().forEach(bet => {
+                html += `<tr>
+                    <td>${bet.username || ''}</td>
+                    <td>${bet.time || ''}</td>
+                    <td>${bet.round || ''}</td>
+                    <td>${bet.bet_side?.toUpperCase() || ''}</td>
+                    <td>${bet.amount?.toLocaleString() || ''}</td>
+                    <td>${bet.sum || ''}</td>
+                    <td>${bet.result}</td>
+                </tr>`;
+            });
+        } else {
+            html = '<tr><td colspan="7">Không có dữ liệu</td></tr>';
+        }
+        document.querySelector('#adminBetsTable tbody').innerHTML = html;
+    } catch (e) {
+        document.querySelector('#adminBetsTable tbody').innerHTML = '<tr><td colspan="7">Không tải được</td></tr>';
+    }
+}
+
+// After login/register
 async function afterLoginOrRegister() {
     const username = localStorage.getItem('current_user');
     await loadUserInfo(username);
     enableDepositWithdrawButtons();
     await loadUserHistory(username);
+    await loadUserBetHistory(username);
     startTimer();
+    if (localStorage.getItem('is_admin') === '1') {
+        showAdminPanel();
+        loadAdminRequestsTable();
+        loadAdminBetsTable();
+    }
 }
 
 // ======= Game Logic =======
@@ -430,23 +489,6 @@ let totalXiu = 483611000;
 let resultHistory = [];
 let dialNum = 12;
 let nanActive = false;
-
-// 3D Dice support (optional, insert in UI if needed)
-function roll3DDice(face, el) {
-    if (!el) return;
-    const rotations = [
-        { x: 0, y: 0 },
-        { x: -90, y: 0 },
-        { x: 0, y: 0 },
-        { x: 0, y: -90 },
-        { x: 0, y: 90 },
-        { x: 90, y: 0 },
-        { x: 180, y: 0 }
-    ];
-    let r = rotations[face];
-    el.style.transform = `rotateX(${r.x}deg) rotateY(${r.y}deg)`;
-    el.setAttribute("data-face", face);
-}
 
 function updateBoard() {
     if (document.getElementById("tx-round-id")) document.getElementById("tx-round-id").textContent = round;
@@ -497,6 +539,22 @@ function settleRound() {
     let result = sum >= 11 && sum <= 17 ? "tai" : "xiu";
     dialNum = sum;
     updateDial(sum);
+
+    // Lưu lịch sử cược nếu user đã đặt
+    const username = localStorage.getItem('current_user');
+    if (username && (userBets["tai"] > 0 || userBets["xiu"] > 0)) {
+        const bet_side = userBets["tai"] > 0 ? "tai" : "xiu";
+        const amount = userBets["tai"] > 0 ? userBets["tai"] : userBets["xiu"];
+        fetch(API_BETS, {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+                username, round, bet_side, amount,
+                result: (bet_side === result ? "win" : "lose"),
+                sum, time: new Date().toLocaleString()
+            })
+        }).then(()=>loadUserBetHistory(username));
+    }
 
     resultHistory.unshift({sum, result});
     if(resultHistory.length>30) resultHistory.length=30;
