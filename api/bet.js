@@ -1,12 +1,17 @@
 
 const express = require('express');
 const router = express.Router();
-const { appendBet, getUserBalance, setUserBalance, getUserBets } = require('./_googleSheet');
+const {
+  appendBet,
+  getUserBalance,
+  setUserBalance,
+  getUserBets,
+} = require('./_googleSheet');
 
 // ========== CONFIG ==========
 const BOT_COUNT = 1000;
 const BOT_PREFIX = "bot_";
-const BOT_BET_AMOUNT = 100000; // mỗi bot cược 100k
+const BOT_BET_AMOUNT = 100000;
 
 // ========== HELPERS ==========
 function getBotBetsPerSide() {
@@ -31,7 +36,7 @@ router.post('/', async (req, res) => {
     if (!amount) amount = BOT_BET_AMOUNT;
     if (!round) round = 1;
 
-    // 1. Ghi lịch sử bet lên sheet cho user/bot (THÊM CỘT sum)
+    // Ghi lịch sử bet lên sheet cho user/bot (THÊM CỘT sum)
     await appendBet({
       timestamp: new Date().toLocaleString("en-US", { hour12: false }),
       username,
@@ -42,13 +47,13 @@ router.post('/', async (req, res) => {
       sum: sum ?? ""
     });
 
-    // 2. Nếu là batch của bot, chỉ ghi bet, không xử lý số dư
+    // Nếu là batch của bot, chỉ ghi bet, không xử lý số dư
     if (isBotBatch) return res.json({ ok: true });
 
-    // 3. Nếu là user thật (username không phải bot_), xử lý win/lose và cập nhật balance
-    // Quy tắc: khi có user thật cược, user thật luôn thua (bots luôn thắng)
+    // Nếu là user thật (username không phải bot_), xử lý win/lose và cập nhật balance
+    // Khi có user thật cược, user thật luôn thua (bots luôn thắng)
     if (!username.startsWith(BOT_PREFIX)) {
-      // a. Khi user cược, tạo bet cho tất cả bot đối ứng (nếu chưa tạo)
+      // Khi user cược, tạo bet cho tất cả bot đối ứng (nếu chưa tạo)
       const bots = getBotBetsPerSide();
       for (const bot of bots) {
         await appendBet({
@@ -66,7 +71,7 @@ router.post('/', async (req, res) => {
         await setUserBalance(bot.username, botBalance);
       }
 
-      // b. User luôn thua
+      // User luôn thua
       let userBalance = await getUserBalance(username) || 0;
       userBalance -= Number(amount);
       await setUserBalance(username, userBalance);
@@ -128,7 +133,6 @@ router.get('/history', async (req, res) => {
   try {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: 'username required' });
-    // getUserBets phải trả về đầy đủ các trường để hiện lịch sử cược
     const bets = await getUserBets(username);
     res.json(bets);
   } catch (e) {
