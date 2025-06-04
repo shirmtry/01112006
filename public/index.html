@@ -7,6 +7,19 @@
     <link rel="icon" href="https://img.tripi.vn/cdn-cgi/image/width=700,height=700/https://gcs.tripi.vn/public-tripi/tripi-feed/img/474081inY/anh-draken-chibi_024228005.jpg" type="image/png">
     <link rel="stylesheet" href="ok1.css">
     <link href="https://fonts.googleapis.com/css?family=Poppins:700,600,400&display=swap" rel="stylesheet">
+    <script>
+    // Ngăn Ctrl+U, Ctrl+Shift+I, F12, Ctrl+Shift+C, Ctrl+Shift+J
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.key.toLowerCase() === 'u') { e.preventDefault(); return false; }
+      if (e.key === 'F12') { e.preventDefault(); return false; }
+      if (e.ctrlKey && e.shiftKey && ['i', 'c', 'j'].includes(e.key.toLowerCase())) { e.preventDefault(); return false; }
+    });
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      return false;
+    });
+  </script>
+
 </head>
 <body>
     <div class="auth-wrapper" id="authWrapper">
