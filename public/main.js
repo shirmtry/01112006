@@ -1,4 +1,5 @@
 
+// ======= API CONST & UTILS =======
 const API_USERS = "/api/user";
 const API_REQUESTS = "/api/request";
 const ADMIN_USERNAMES = ["admin"];
@@ -51,8 +52,10 @@ function disableDepositWithdrawButtons() {
     if(document.getElementById('openWithdrawPageBtn')) document.getElementById('openWithdrawPageBtn').disabled = true;
 }
 
+// ======= AUTH & USER FLOW =======
 document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
+    // Auth UI Switch
     if (document.getElementById('showRegisterLink')) document.getElementById('showRegisterLink').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById("loginForm").style.display = "none";
@@ -77,7 +80,6 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
     });
 
-    // Giao diện trang chuyển - nạp/rút
     // Nạp tiền
     const openDepositBtn = document.getElementById('openDepositPageBtn');
     const depositPage = document.getElementById('depositPage');
@@ -205,6 +207,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
+// ======= Register/Login =======
 if (document.getElementById('registerBtn')) document.getElementById('registerBtn').addEventListener('click', async () => {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value;
@@ -310,6 +313,7 @@ if (document.getElementById('loginBtn')) document.getElementById('loginBtn').add
     }
 });
 
+// ======= User/History/Admin =======
 async function loadUserHistory(username) {
     try {
         const res = await fetch(`${API_REQUESTS}?username=${encodeURIComponent(username)}`);
@@ -414,7 +418,7 @@ async function afterLoginOrRegister() {
     startTimer();
 }
 
-// Game tài xỉu logic
+// ======= Game Logic =======
 const BET_AMOUNTS_MD5 = [1000, 5000, 10000, 50000, 100000, 500000, 1000000, 10000000];
 let round = 1;
 let timer = 30;
@@ -426,6 +430,23 @@ let totalXiu = 483611000;
 let resultHistory = [];
 let dialNum = 12;
 let nanActive = false;
+
+// 3D Dice support (optional, insert in UI if needed)
+function roll3DDice(face, el) {
+    if (!el) return;
+    const rotations = [
+        { x: 0, y: 0 },
+        { x: -90, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: -90 },
+        { x: 0, y: 90 },
+        { x: 90, y: 0 },
+        { x: 180, y: 0 }
+    ];
+    let r = rotations[face];
+    el.style.transform = `rotateX(${r.x}deg) rotateY(${r.y}deg)`;
+    el.setAttribute("data-face", face);
+}
 
 function updateBoard() {
     if (document.getElementById("tx-round-id")) document.getElementById("tx-round-id").textContent = round;
