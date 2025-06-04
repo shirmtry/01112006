@@ -95,7 +95,7 @@ async function updateUserBalance(auth, username, delta) {
   return newBalance;
 }
 
-// API: Đặt cược (trừ tiền ngay)
+// ========== API: Đặt cược ==========
 router.post('/', async (req, res) => {
   const { username, side, amount, round } = req.body;
   const auth = req.auth;
@@ -123,21 +123,22 @@ router.post('/', async (req, res) => {
   }
 });
 
-// API: Lấy lịch sử cược của user
+// ========== API: Lấy lịch sử cược của user ==========
 router.get('/history', async (req, res) => {
   const auth = req.auth;
   const { username } = req.query;
   if (!username) return res.status(400).json({ error: 'Thiếu username' });
   try {
     const bets = await getSheetData(auth, BETS_SHEET);
-    const result = bets.filter(bet => bet.username === username);
+    // Sắp xếp mới nhất lên đầu
+    const result = bets.filter(bet => bet.username === username).reverse();
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: 'Không tải được lịch sử cược: ' + e.message });
   }
 });
 
-// API: Lấy toàn bộ lịch sử cược (admin)
+// ========== API: Lấy toàn bộ lịch sử cược (admin) ==========
 router.get('/all', async (req, res) => {
   const auth = req.auth;
   try {
@@ -148,7 +149,7 @@ router.get('/all', async (req, res) => {
   }
 });
 
-// API: Settle round (xử lý thắng/thua, cộng tiền nếu thắng)
+// ========== API: Settle round (xử lý thắng/thua, cộng tiền nếu thắng) ==========
 router.post('/settle', async (req, res) => {
   const { round, sum, dice1, dice2, dice3 } = req.body;
   const auth = req.auth;
