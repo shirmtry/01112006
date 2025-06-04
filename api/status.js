@@ -9,23 +9,27 @@ let txStatus = {
   totalXiu: 0,
   result: null, // "tai" | "xiu"
   sum: null,
-  dice: [0,0,0]
+  dice: [0, 0, 0]
 };
 
 // Lưu cược tạm thời cho phiên hiện tại
-let bets = []; // {username, side, amount, time}
+let bets = []; // {username, side, amount, time, round}
 
 let timerInterval = null;
 
 // Hàm random xúc xắc
 function rollDice() {
-  return [1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];
+  return [
+    1 + Math.floor(Math.random() * 6),
+    1 + Math.floor(Math.random() * 6),
+    1 + Math.floor(Math.random() * 6)
+  ];
 }
 function calcResult(dice) {
-  const sum = dice[0]+dice[1]+dice[2];
+  const sum = dice[0] + dice[1] + dice[2];
   return {
     sum,
-    result: (sum>=11&&sum<=17) ? 'tai' : 'xiu'
+    result: (sum >= 11 && sum <= 17) ? 'tai' : 'xiu'
   };
 }
 
@@ -33,12 +37,12 @@ function calcResult(dice) {
 function startRound() {
   if (timerInterval) clearInterval(timerInterval);
   txStatus.timer = 30;
-  timerInterval = setInterval(()=>{
+  timerInterval = setInterval(() => {
     txStatus.timer--;
     if (txStatus.timer <= 0) {
       // Kết thúc phiên, tính kết quả
       const dice = rollDice();
-      const {sum,result} = calcResult(dice);
+      const { sum, result } = calcResult(dice);
       txStatus.dice = dice;
       txStatus.sum = sum;
       txStatus.result = result;
@@ -58,21 +62,22 @@ function startRound() {
 }
 startRound();
 
+// Lấy trạng thái phiên hiện tại
 router.get('/', (req, res) => {
   res.json(txStatus);
 });
 
 // API đặt cược (client gọi)
 router.post('/bet', (req, res) => {
-  const {username, side, amount} = req.body;
+  const { username, side, amount } = req.body;
   if (!username || !side || !amount) {
-    return res.json({success: false, error: "Thiếu thông tin"});
+    return res.json({ success: false, error: "Thiếu thông tin" });
   }
-  if (txStatus.timer <= 3) return res.json({success:false, error:"Sắp hết phiên"});
-  bets.push({username, side, amount, time: Date.now(), round: txStatus.round});
+  if (txStatus.timer <= 3) return res.json({ success: false, error: "Sắp hết phiên" });
+  bets.push({ username, side, amount, time: Date.now(), round: txStatus.round });
   if (side === "tai") txStatus.totalTai += Number(amount);
   if (side === "xiu") txStatus.totalXiu += Number(amount);
-  res.json({success:true});
+  res.json({ success: true });
 });
 
 // Cho admin hoặc backend update kết quả thủ công (nếu cần)
