@@ -6,6 +6,45 @@
     <title>2k6 mãi đỉnh</title>
     <link rel="stylesheet" href="ok1.css">
     <link href="https://fonts.googleapis.com/css?family=Poppins:700,600,400&display=swap" rel="stylesheet">
+    <style>
+        .selected { background: #ffd700; }
+        .tx-quick-btn { margin: 2px; }
+        .dice3d-3d { width: 40px; height: 40px; perspective: 400px; display: inline-block; }
+        .face { position: absolute; }
+        .result-ball, .tx-result-ball { display:inline-block;margin:1px;padding:2px 7px;border-radius:50%;font-weight:bold; }
+        .tai-ball, .tx-result-ball.tai { background:#ffd; color:#c00;}
+        .xiu-ball, .tx-result-ball.xiu { background:#ddf; color:#04a;}
+        body { font-family: 'Poppins', Arial,sans-serif; background: #f6f7fb; color: #222; }
+        #mainContent { max-width: 700px; margin: 0 auto; background: #fff; padding: 30px 20px 32px 20px; border-radius: 12px; box-shadow: 0 2px 10px #0001; }
+        h2, h3, h4 { margin-top: 0; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 6px 8px; }
+        th { background: #f7f7f7; }
+        #loginForm, #registerForm { max-width: 350px; margin: 50px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px #0002; padding: 24px; }
+        input { padding: 7px; margin: 5px 0 12px 0; border: 1px solid #ccc; border-radius: 4px; width: 90%; }
+        button { padding: 7px 18px; border-radius: 6px; border: none; background: #3b82f6; color: #fff; font-weight: 600; margin: 3px 2px; cursor: pointer; }
+        button:disabled { background: #bbb; cursor: not-allowed; }
+        .tx-quick-btn.selected { background: #22d3ee; color: #fff; border:2px solid #155e75; }
+        #betStatus { font-weight: bold; margin: 10px 0 8px 0; color: #0a7;}
+        .captcha-inputcode input { width: 60px; margin-right: 10px; }
+        .captcha-img { display: inline-block; min-width: 60px; min-height: 28px; font-weight: bold; font-size: 1.1rem; background: #eee; text-align: center; vertical-align: middle; line-height: 28px; user-select: none; cursor: pointer; border-radius: 5px; padding: 0 8px; }
+        .login-form, .register-form { width: 100%; }
+        .main-content-flex { display: flex; flex-direction: column; }
+        .game-area { margin-bottom: 20px; }
+        .tx-board { display: flex; align-items: stretch; justify-content: center; }
+        .tx-col { width: 90px; align-items: center; display: flex; flex-direction: column; justify-content: center; }
+        .tx-label { font-size: 1.1rem; font-weight: 600; }
+        .tx-total { font-size: 1.1rem; margin-top: 4px; }
+        .tx-center-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+        .tx-round { font-size: 1.2rem; font-weight: bold; margin-bottom: 7px; }
+        .tx-clock-wrap { margin-bottom: 12px; }
+        .tx-bet-row { display: none; }
+        .tx-quick-bets { margin: 10px 0 7px 0; }
+        .tx-result-bar { margin: 7px 0 5px 0; }
+        .tx-result-label { font-weight: 600; margin-right: 7px; }
+        .tx-result-list { display: inline-block; vertical-align: middle;}
+        .tx-copy-btn { margin-left: 12px; padding: 2px 12px; background: #ffd700; color: #222; border-radius: 6px; font-weight: bold; border: 1px solid #daa520;}
+    </style>
 </head>
 <body>
     <div class="auth-wrapper" id="authWrapper">
@@ -80,11 +119,6 @@
                                     <div class="tx-dice-3d" id="dice3"></div>
                                 </div>
                             </div>
-                            <div class="tx-bet-row">
-                                <input type="number" id="tx-bet-amount" class="tx-bet-input" value="0" min="0" placeholder="Nhập số tiền cược">
-                                <button id="tx-bet-btn" class="tx-btn tx-btn-bet">CƯỢC</button>
-                                <button id="tx-nan-btn" class="tx-btn tx-btn-nan" disabled>NỆN</button>
-                            </div>
                             <div class="tx-quick-bets">
                                 <button class="tx-quick-btn" data-amount="1000">1K</button>
                                 <button class="tx-quick-btn" data-amount="10000">10K</button>
@@ -95,6 +129,7 @@
                                 <button class="tx-quick-btn" data-amount="10000000">10M</button>
                                 <button class="tx-quick-btn" data-amount="50000000">50M</button>
                             </div>
+                            <button id="tx-bet-btn" class="tx-btn tx-btn-bet">ĐẶT CƯỢC</button>
                             <div class="tx-result-bar">
                                 <span class="tx-result-label">KẾT QUẢ</span>
                                 <div id="tx-result-list" class="tx-result-list"></div>
