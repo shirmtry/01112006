@@ -1,3 +1,4 @@
+
 :root {
   --primary-color: #6a3093;
   --secondary-color: #a044ff;
@@ -5,7 +6,7 @@
   --win-color: #4CAF50;
   --lose-color: #F44336;
   --text-light: #ffffff;
-  --text-dark: #222;
+  --text-dark: #232b44;
   --background-dark: #1a1a2e;
   --background-light: #16213e;
   --card-bg: #232b44;
@@ -21,10 +22,11 @@ body {
   background: linear-gradient(135deg, var(--background-dark) 0%, var(--background-light) 100%);
   color: var(--text-light);
   margin: 0;
-  font-family: 'Poppins', 'Segoe UI', sans-serif;
+  font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
   user-select: none;
   line-height: 1.6;
   min-height: 100vh;
+  letter-spacing: 0.1px;
 }
 
 .main-content-flex {
@@ -57,16 +59,17 @@ body {
   align-items: center;
   min-height: 100vh;
   padding: 20px;
+  background: linear-gradient(130deg, #6a3093 0%, #232b44 100%);
 }
 
 .login-form, .register-form {
-  background: rgba(31,41,55,0.92);
+  background: rgba(49,38,91,0.96);
   border-radius: 18px;
   box-shadow: var(--shadow-heavy);
-  padding: 32px 18px;
+  padding: 32px 18px 28px 18px;
   width: 100%;
-  max-width: 340px;
-  border: 1px solid rgba(255,255,255,0.08);
+  max-width: 356px;
+  border: 1.5px solid rgba(160,68,255,0.13);
   animation: fadeIn 0.5s;
 }
 
@@ -79,9 +82,9 @@ body {
   text-align: center;
   margin-bottom: 22px;
   color: var(--gold-color);
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: 1px;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
   text-shadow: 0 3px 12px #a044ff33;
 }
 
@@ -130,7 +133,7 @@ body {
   padding: 12px 0;
   border-radius: 10px;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 800;
   border: none;
   cursor: pointer;
   transition: all 0.25s;
@@ -418,7 +421,7 @@ body {
   text-shadow: 0 2px 12px #a044ff33;
 }
 
-.user-history-section table, 
+.user-history-section table,
 .user-stats-section table {
   width: 100%;
   border-collapse: separate;
@@ -573,7 +576,7 @@ body {
 
 .tx-left, .tx-right {
   flex: 1;
-  background: rgba(15,52,96,0.77);
+  background: linear-gradient(135deg, rgba(160,68,255,0.17) 0%, rgba(49,38,91,0.88) 100%);
   border-radius: 14px;
   padding: 22px;
   text-align: center;
@@ -605,12 +608,12 @@ body {
   letter-spacing: 0.7px;
 }
 
-.tx-bet-title.tai { 
+.tx-bet-title.tai {
   color: var(--secondary-color);
   text-shadow: 0 2px 8px rgba(106,48,147,0.24);
 }
 
-.tx-bet-title.xiu { 
+.tx-bet-title.xiu {
   color: var(--lose-color);
   text-shadow: 0 2px 8px rgba(244,67,54,0.17);
 }
@@ -659,7 +662,7 @@ body {
   width: 10px;
   height: 3px;
   background: var(--gold-color);
-  left: 50%; 
+  left: 50%;
   top: 50%;
   transform-origin: left center;
 }
@@ -825,13 +828,13 @@ body {
   box-shadow: 0 2px 7px #FFD70033;
 }
 
-.tx-result-ball.tai { 
+.tx-result-ball.tai {
   background: var(--secondary-color);
   color: white;
   box-shadow: 0 2px 7px #a044ff44;
 }
 
-.tx-result-ball.xiu { 
+.tx-result-ball.xiu {
   background: var(--lose-color);
   color: white;
   box-shadow: 0 2px 7px #F4433666;
