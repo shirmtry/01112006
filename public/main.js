@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('captcha').value = '';
         disableDepositWithdrawButtons();
         document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
-        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Chưa có dữ liệu</td></tr>';
+        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
     });
 
     // Nạp tiền
@@ -370,17 +370,16 @@ async function loadUserBetHistory(username) {
                 html += `<tr>
                     <td>${bet.time || ''}</td>
                     <td>${bet.bet_side?.toUpperCase() || ''} (${bet.amount?.toLocaleString()})</td>
-                    <td>${bet.result === 'win' ? '<b style="color:var(--win-color)">Thắng</b>' : (bet.result === 'lose' ? '<b style="color:var(--lose-color)">Thua</b>' : 'Đang chờ')}</td>
                     <td>${bet.sum || ''}</td>
-                    <td>${bet.result}</td>
+                    <td>${bet.result === 'win' ? '<b style="color:var(--win-color)">Thắng</b>' : (bet.result === 'lose' ? '<b style="color:var(--lose-color)">Thua</b>' : 'Đang chờ')}</td>
                 </tr>`;
             });
         } else {
-            html = '<tr><td colspan="5">Chưa có dữ liệu</td></tr>';
+            html = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
         }
         document.querySelector('#userStatsTable tbody').innerHTML = html;
     } catch (e) {
-        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Không tải được</td></tr>';
+        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="4">Không tải được</td></tr>';
     }
 }
 
@@ -478,14 +477,14 @@ async function afterLoginOrRegister() {
 }
 
 // ======= Game Logic =======
-const BET_AMOUNTS_MD5 = [1000, 5000, 10000, 50000, 100000, 500000, 1000000, 10000000];
+const BET_AMOUNTS_MD5 = [1000, 10000, 100000, 500000, 5000000, 10000000 , 50000000];
 let round = 1;
 let timer = 30;
 let interval;
 let betSide = "tai";
 let userBets = { tai: 0, xiu: 0 };
-let totalTai = 458462000;
-let totalXiu = 483611000;
+let totalTai = 0; // Tổng cược tài phiên hiện tại
+let totalXiu = 0; // Tổng cược xỉu phiên hiện tại
 let resultHistory = [];
 let dialNum = 12;
 let nanActive = false;
@@ -560,9 +559,10 @@ function settleRound() {
     if(resultHistory.length>30) resultHistory.length=30;
     updateResultList();
 
-    totalTai += userBets["tai"];
-    totalXiu += userBets["xiu"];
+    // Reset tổng cược cho phiên mới
     userBets = { tai: 0, xiu: 0 };
+    totalTai = 0;
+    totalXiu = 0;
     nanActive = false;
 
     setTimeout(()=>{
@@ -597,7 +597,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         userBets[betSide] += amt;
+        // Cộng tổng cược cho phiên hiện tại
+        if (betSide === "tai") totalTai += amt;
+        if (betSide === "xiu") totalXiu += amt;
         document.getElementById("tx-bet-amount").value = userBets[betSide];
+        updateBoard();
         this.disabled = true;
         if(document.getElementById("tx-nan-btn")) document.getElementById("tx-nan-btn").disabled = true;
         alert(`Đã cược ${amt.toLocaleString()} vào ${betSide.toUpperCase()}`);
@@ -639,3 +643,66 @@ document.addEventListener('DOMContentLoaded', () => {
         startTimer();
     }
 });
+
+// ========== 3D Dice Module (for beautiful UI) ==========
+function renderDice3D(elem, value) {
+    elem.innerHTML = `
+    <div class="dice3d-3d" style="transform: ${dice3DRotation(value)};">
+      ${[1,2,3,4,5,6].map(face => `<div class="face ${getFaceClass(face)}">${diceFaceDots(face)}</div>`).join('')}
+    </div>
+    `;
+}
+function dice3DRotation(value) {
+    const faces = {
+        1: 'rotateX(0deg) rotateY(0deg)',
+        2: 'rotateX(-90deg) rotateY(0deg)',
+        3: 'rotateX(0deg) rotateY(90deg)',
+        4: 'rotateX(0deg) rotateY(-90deg)',
+        5: 'rotateX(90deg) rotateY(0deg)',
+        6: 'rotateX(180deg) rotateY(0deg)'
+    };
+    return faces[value] || 'rotateX(0deg) rotateY(0deg)';
+}
+function getFaceClass(n) {
+    return ["front","back","right","left","top","bottom"][n-1];
+}
+function diceFaceDots(value) {
+    const dot = '<span class="dice-dot"></span>';
+    const faces = {
+        1: `<div style="display:flex;justify-content:center;align-items:center;height:100%;"><span class="dice-dot"></span></div>`,
+        2: `<div style="display:flex;flex-direction:column;justify-content:space-between;height:100%;">
+                <span style="align-self:flex-start">${dot}</span>
+                <span style="align-self:flex-end">${dot}</span>
+            </div>`,
+        3: `<div style="display:flex;flex-direction:column;justify-content:space-between;height:100%;">
+                <span style="align-self:flex-start">${dot}</span>
+                <span style="align-self:center">${dot}</span>
+                <span style="align-self:flex-end">${dot}</span>
+            </div>`,
+        4: `<div style="display:flex;flex-wrap:wrap;width:100%;height:100%;align-items:center;">
+                <span class="dice-dot"></span><span class="dice-dot" style="margin-left:auto"></span>
+                <span class="dice-dot"></span><span class="dice-dot" style="margin-left:auto"></span>
+            </div>`,
+        5: `<div style="display:flex;flex-direction:column;justify-content:space-between;height:100%;">
+                <div style="display:flex;justify-content:space-between;">
+                  <span class="dice-dot"></span><span class="dice-dot"></span>
+                </div>
+                <div style="display:flex;justify-content:center;"><span class="dice-dot"></span></div>
+                <div style="display:flex;justify-content:space-between;">
+                  <span class="dice-dot"></span><span class="dice-dot"></span>
+                </div>
+            </div>`,
+        6: `<div style="display:flex;flex-direction:column;justify-content:space-between;height:100%;">
+                <div style="display:flex;justify-content:space-between;">
+                  <span class="dice-dot"></span><span class="dice-dot"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                  <span class="dice-dot"></span><span class="dice-dot"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                  <span class="dice-dot"></span><span class="dice-dot"></span>
+                </div>
+            </div>`
+    };
+    return faces[value] || `<span>${value}</span>`;
+}
