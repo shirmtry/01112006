@@ -236,6 +236,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (currentUser) {
         enableDepositWithdrawButtons();
         loadUserBetHistory(currentUser);
+        loadUserHistory(currentUser);
     } else {
         disableDepositWithdrawButtons();
     }
