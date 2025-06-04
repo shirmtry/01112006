@@ -1,5 +1,3 @@
-
-// ======= API CONST & UTILS =======
 const API_USERS = "/api/user";
 const API_REQUESTS = "/api/request";
 const API_BETS = "/api/bet";
@@ -53,10 +51,8 @@ function disableDepositWithdrawButtons() {
     if(document.getElementById('openWithdrawPageBtn')) document.getElementById('openWithdrawPageBtn').disabled = true;
 }
 
-// ======= AUTH & USER FLOW =======
 document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
-    // Auth UI Switch
     if (document.getElementById('showRegisterLink')) document.getElementById('showRegisterLink').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById("loginForm").style.display = "none";
@@ -79,10 +75,9 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('captcha').value = '';
         disableDepositWithdrawButtons();
         document.getElementById("userHistoryTableBody").innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
-        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Chưa có dữ liệu</td></tr>';
     });
 
-    // Nạp tiền
     const openDepositBtn = document.getElementById('openDepositPageBtn');
     const depositPage = document.getElementById('depositPage');
     if (openDepositBtn && depositPage) {
@@ -136,7 +131,6 @@ document.addEventListener("DOMContentLoaded", function() {
             await loadUserHistory(username);
         };
     }
-    // Rút tiền
     const openWithdrawBtn = document.getElementById('openWithdrawPageBtn');
     const withdrawPage = document.getElementById('withdrawPage');
     if (openWithdrawBtn && withdrawPage) {
@@ -214,9 +208,15 @@ document.addEventListener("DOMContentLoaded", function() {
         loadAdminRequestsTable();
         loadAdminBetsTable();
     }
+
+    if (document.getElementById('openResultHistoryBtn')) {
+        document.getElementById('openResultHistoryBtn').onclick = openResultHistoryPage;
+    }
+    if (document.getElementById('resultHistoryPageCloseBtn')) {
+        document.getElementById('resultHistoryPageCloseBtn').onclick = closeResultHistoryPage;
+    }
 });
 
-// ======= Register/Login =======
 if (document.getElementById('registerBtn')) document.getElementById('registerBtn').addEventListener('click', async () => {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value;
@@ -322,7 +322,6 @@ if (document.getElementById('loginBtn')) document.getElementById('loginBtn').add
     }
 });
 
-// ======= User/History/Admin =======
 async function loadUserHistory(username) {
     try {
         const res = await fetch(`${API_REQUESTS}?username=${encodeURIComponent(username)}`);
@@ -359,36 +358,38 @@ async function loadUserInfo(username) {
     }
 }
 
-// Lịch sử cược của user
 async function loadUserBetHistory(username) {
     try {
-        const res = await fetch(`${API_BETS}?username=${encodeURIComponent(username)}`);
+        const res = await fetch(`/api/bet/history?username=${encodeURIComponent(username)}`);
         const bets = await res.json();
         let html = '';
         if(Array.isArray(bets) && bets.length) {
             bets.reverse().forEach(bet => {
                 html += `<tr>
                     <td>${bet.time || ''}</td>
-                    <td>${bet.bet_side?.toUpperCase() || ''} (${bet.amount?.toLocaleString()})</td>
+                    <td>${bet.bet_side?.toUpperCase() || ''} (${Number(bet.amount).toLocaleString() || ''})</td>
+                    <td>${bet.result === 'win' ? 'TÀI' : (bet.result === 'lose' ? 'XỈU' : '-')}</td>
                     <td>${bet.sum || ''}</td>
-                    <td>${bet.result === 'win' ? '<b style="color:var(--win-color)">Thắng</b>' : (bet.result === 'lose' ? '<b style="color:var(--lose-color)">Thua</b>' : 'Đang chờ')}</td>
+                    <td>${bet.result === 'win'
+                        ? '<b style="color:var(--win-color)">Thắng</b>'
+                        : bet.result === 'lose'
+                        ? '<b style="color:var(--lose-color)">Thua</b>'
+                        : 'Đang chờ'}</td>
                 </tr>`;
             });
         } else {
-            html = '<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+            html = '<tr><td colspan="5">Không có dữ liệu</td></tr>';
         }
         document.querySelector('#userStatsTable tbody').innerHTML = html;
     } catch (e) {
-        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="4">Không tải được</td></tr>';
+        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Không tải được</td></tr>';
     }
 }
 
-// Admin panel
 function showAdminPanel() {
     if (document.getElementById("adminPanel")) document.getElementById("adminPanel").style.display = "block";
 }
 
-// Yêu cầu nạp/rút table cho admin
 async function loadAdminRequestsTable() {
     if (!document.getElementById('adminRequestsTable')) return;
     try {
@@ -423,7 +424,6 @@ async function loadAdminRequestsTable() {
     }
 }
 
-// Duyệt/hủy nạp/rút
 window.adminApproveRequest = async function(requestId, status){
     await fetch(`${API_REQUESTS}/${requestId}`, {
         method: "PATCH",
@@ -433,7 +433,6 @@ window.adminApproveRequest = async function(requestId, status){
     await loadAdminRequestsTable();
 }
 
-// Admin xem lịch sử cược toàn hệ thống
 async function loadAdminBetsTable() {
     if (!document.getElementById('adminBetsTable')) return;
     try {
@@ -461,7 +460,6 @@ async function loadAdminBetsTable() {
     }
 }
 
-// After login/register
 async function afterLoginOrRegister() {
     const username = localStorage.getItem('current_user');
     await loadUserInfo(username);
@@ -476,15 +474,14 @@ async function afterLoginOrRegister() {
     }
 }
 
-// ======= Game Logic =======
 const BET_AMOUNTS_MD5 = [1000, 10000, 100000, 500000, 5000000, 10000000 , 50000000];
 let round = 1;
 let timer = 30;
 let interval;
 let betSide = "tai";
 let userBets = { tai: 0, xiu: 0 };
-let totalTai = 0; // Tổng cược tài phiên hiện tại
-let totalXiu = 0; // Tổng cược xỉu phiên hiện tại
+let totalTai = 0;
+let totalXiu = 0;
 let resultHistory = [];
 let dialNum = 12;
 let nanActive = false;
@@ -504,7 +501,7 @@ function updateBoard() {
 function updateResultList() {
     const el = document.getElementById("tx-result-list");
     if (!el) return;
-    el.innerHTML = resultHistory.slice(-15).map(x =>
+    el.innerHTML = resultHistory.slice(0, 12).map(x =>
         `<span class="tx-result-ball ${x.result}">${x.sum}</span>`
     ).join("");
 }
@@ -539,7 +536,6 @@ function settleRound() {
     dialNum = sum;
     updateDial(sum);
 
-    // Lưu lịch sử cược nếu user đã đặt
     const username = localStorage.getItem('current_user');
     if (username && (userBets["tai"] > 0 || userBets["xiu"] > 0)) {
         const bet_side = userBets["tai"] > 0 ? "tai" : "xiu";
@@ -558,8 +554,10 @@ function settleRound() {
     resultHistory.unshift({sum, result});
     if(resultHistory.length>30) resultHistory.length=30;
     updateResultList();
+    if(document.getElementById('resultHistoryPage') && document.getElementById('resultHistoryPage').style.display === "flex") {
+        renderResultHistoryDiv();
+    }
 
-    // Reset tổng cược cho phiên mới
     userBets = { tai: 0, xiu: 0 };
     totalTai = 0;
     totalXiu = 0;
@@ -597,7 +595,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         userBets[betSide] += amt;
-        // Cộng tổng cược cho phiên hiện tại
         if (betSide === "tai") totalTai += amt;
         if (betSide === "xiu") totalXiu += amt;
         document.getElementById("tx-bet-amount").value = userBets[betSide];
@@ -643,6 +640,35 @@ document.addEventListener('DOMContentLoaded', () => {
         startTimer();
     }
 });
+
+// ======= KẾT QUẢ GẦN ĐÂY - HIỆN TRONG DIV RIÊNG =======
+function renderResultHistoryDiv() {
+    let html = `<div class="result-history-title"><b>KẾT QUẢ</b></div>
+    <div class="result-balls-row">`;
+    const latestResults = resultHistory.slice(0, 12);
+    for(const r of latestResults) {
+        const isTai = r.result === "tai";
+        html += `<span class="result-ball ${isTai ? 'tai-ball' : 'xiu-ball'}">${r.sum}</span>`;
+    }
+    html += `</div>
+    <button class="result-copy-btn" id="resultCopyBtn">COPY</button>`;
+    document.getElementById('resultHistoryPageContent').innerHTML = html;
+
+    document.getElementById('resultCopyBtn').onclick = function() {
+        let txt = latestResults.map(x=>x.sum).join(" - ");
+        navigator.clipboard.writeText(txt);
+        this.textContent = "ĐÃ COPY!";
+        setTimeout(()=>{this.textContent="COPY"}, 1200);
+    };
+}
+
+function openResultHistoryPage() {
+    renderResultHistoryDiv();
+    document.getElementById('resultHistoryPage').style.display = "flex";
+}
+function closeResultHistoryPage() {
+    document.getElementById('resultHistoryPage').style.display = "none";
+}
 
 // ========== 3D Dice Module (for beautiful UI) ==========
 function renderDice3D(elem, value) {
