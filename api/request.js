@@ -1,6 +1,10 @@
+const express = require('express');
+const router = express.Router();
 const { getSheetsClient, SHEET_ID } = require('./_googleSheet');
+
 const SHEET_NAME = 'requests';
 
+// --- Helper functions ---
 async function getRequests() {
   const sheets = await getSheetsClient();
   const resp = await sheets.spreadsheets.values.get({
@@ -22,32 +26,50 @@ async function appendRequest(data) {
     range: SHEET_NAME,
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [data] }
+    resource: { values: [data] }
   });
 }
 
-module.exports = async (req, res) => {
+// --- API endpoints ---
+
+// GET: /api/request (có thể thêm ?username=username để lọc theo user)
+router.get('/', async (req, res) => {
   try {
-    if (req.method === 'GET') {
-      const requests = await getRequests();
-      return res.status(200).json(requests);
+    const { username } = req.query;
+    const requests = await getRequests();
+    if (username) {
+      const filtered = requests.filter(r => (r.username || '').toLowerCase() === username.toLowerCase());
+      return res.status(200).json(filtered);
     }
-    if (req.method === 'POST') {
-      const { username, type, amount, bank_code = "", note = "" } = req.body;
-      if (!username || !type || !amount) return res.status(400).json({ error: "Thiếu thông tin." });
-      await appendRequest([
-        new Date().toISOString(),
-        username,
-        type,
-        amount,
-        "pending",
-        bank_code,
-        note
-      ]);
-      return res.status(201).json({ success: true });
-    }
-    res.status(405).json({ error: "Phương thức không hỗ trợ." });
+    return res.status(200).json(requests);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-};
+});
+
+// POST: /api/request
+router.post('/', async (req, res) => {
+  try {
+    const { username, type, amount, bank_code = "", note = "" } = req.body;
+    if (!username || !type || !amount) return res.status(400).json({ error: "Thiếu thông tin." });
+    await appendRequest([
+      new Date().toISOString(),
+      username,
+      type,
+      amount,
+      "pending",
+      bank_code,
+      note
+    ]);
+    return res.status(201).json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Không hỗ trợ các phương thức khác
+router.all('/', (req, res) => {
+  res.status(405).json({ error: "Phương thức không hỗ trợ." });
+});
+
+module.exports = router;
