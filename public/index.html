@@ -6,38 +6,6 @@
     <title>2k6 mãi đỉnh</title>
     <link rel="stylesheet" href="ok1.css">
     <link href="https://fonts.googleapis.com/css?family=Poppins:700,600,400&display=swap" rel="stylesheet">
-    <style>
-        .selected { background: #ffd700; }
-        .tx-quick-btn { margin: 2px; }
-        .dice3d-3d { width: 40px; height: 40px; perspective: 400px; display: inline-block; }
-        .face { position: absolute; }
-        .result-ball, .tx-result-ball { display:inline-block;margin:1px;padding:2px 7px;border-radius:50%;font-weight:bold; }
-        .tai-ball, .tx-result-ball.tai { background:#ffd; color:#c00;}
-        .xiu-ball, .tx-result-ball.xiu { background:#ddf; color:#04a;}
-        body { font-family: 'Poppins', Arial,sans-serif; background: #f6f7fb; color: #222; }
-        #mainContent { max-width: 900px; margin: 0 auto; background: #fff; padding: 30px 20px 32px 20px; border-radius: 12px; box-shadow: 0 2px 10px #0001; }
-        h2, h3, h4 { margin-top: 0; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 6px 8px; }
-        th { background: #f7f7f7; }
-        #loginForm, #registerForm { max-width: 350px; margin: 50px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px #0002; padding: 24px; }
-        input { padding: 7px; margin: 5px 0 12px 0; border: 1px solid #ccc; border-radius: 4px; width: 90%; }
-        button { padding: 7px 18px; border-radius: 6px; border: none; background: #3b82f6; color: #fff; font-weight: 600; margin: 3px 2px; cursor: pointer; }
-        button:disabled { background: #bbb; cursor: not-allowed; }
-        .tx-quick-btn.selected { background: #22d3ee; color: #fff; border:2px solid #155e75; }
-        #betStatus { font-weight: bold; margin: 10px 0 8px 0; color: #0a7;}
-        .captcha-inputcode input { width: 60px; margin-right: 10px; }
-        .captcha-img { display: inline-block; min-width: 60px; min-height: 28px; font-weight: bold; font-size: 1.1rem; background: #eee; text-align: center; vertical-align: middle; line-height: 28px; user-select: none; cursor: pointer; border-radius: 5px; padding: 0 8px; }
-        .login-form, .register-form { width: 100%; }
-        .main-content-flex { display: flex; flex-direction: column; }
-        .main-flex-wrap { display: flex; flex-wrap: wrap; gap: 32px; }
-        .main-flex-left { flex: 1 1 380px; min-width: 320px; }
-        .main-flex-right { flex: 1 1 320px; min-width: 280px; }
-        @media (max-width: 900px) {
-            .main-flex-wrap { flex-direction: column; }
-            #mainContent { max-width: 100%; }
-        }
-    </style>
 </head>
 <body>
     <div class="auth-wrapper" id="authWrapper">
@@ -91,32 +59,36 @@
         </div>
     </div>
     <div id="mainContent" style="display:none;">
-        <div style="text-align:right;">
-            <button id="logoutBtn">Đăng xuất</button>
+        <div class="user-bar">
+            <span>Xin chào, <span id="userNameDisplay"></span> | Số dư: <span id="userBalance">0</span>đ</span>
+            <div class="user-bar-btns">
+                <button id="openDepositPageBtn" disabled>Nạp tiền</button>
+                <button id="openWithdrawPageBtn" disabled>Rút tiền</button>
+                <button id="logoutBtn">Đăng xuất</button>
+            </div>
         </div>
-        <h3>Xin chào, <span id="userNameDisplay"></span> | Số dư: <span id="userBalance">0</span>đ</h3>
         <div class="main-flex-wrap">
             <div class="main-flex-left">
                 <div id="tx-main-container">
-                    <div style="margin-bottom:12px;">
-                        <b>Phiên:</b> <span id="tx-round-id"></span> | <b>Thời gian:</b> <span id="tx-timer"></span>s
+                    <div class="game-header">
+                        <div><b>Phiên:</b> <span id="tx-round-id"></span></div>
+                        <div><b>Thời gian:</b> <span id="tx-timer"></span>s</div>
                     </div>
-                    <div style="margin-bottom:12px;">
-                        <span id="tx-tai-total">0</span> <b>TÀI</b>
-                        &nbsp; - &nbsp;
-                        <span id="tx-xiu-total">0</span> <b>XỈU</b>
+                    <div class="tx-totals">
+                        <div class="tx-tai-total"><span id="tx-tai-total">0</span> <b>TÀI</b></div>
+                        <div class="tx-xiu-total"><span id="tx-xiu-total">0</span> <b>XỈU</b></div>
                     </div>
-                    <div style="margin-bottom:19px;">
-                        <div id="dice3d-1"></div>
-                        <div id="dice3d-2"></div>
-                        <div id="dice3d-3"></div>
+                    <div class="tx-dice-bar">
+                        <div class="tx-dice" id="dice3d-1"></div>
+                        <div class="tx-dice" id="dice3d-2"></div>
+                        <div class="tx-dice" id="dice3d-3"></div>
                     </div>
                     <div id="betStatus"></div>
-                    <div style="margin-bottom:10px;">
+                    <div class="tx-bet-bar">
                         <button id="tx-tai-select" class="selected">TÀI</button>
                         <button id="tx-xiu-select">XỈU</button>
                     </div>
-                    <div style="margin-bottom:11px;">
+                    <div class="tx-quick-bets">
                         <button class="tx-quick-btn" data-amount="1000">1K</button>
                         <button class="tx-quick-btn" data-amount="10000">10K</button>
                         <button class="tx-quick-btn" data-amount="100000">100K</button>
@@ -125,13 +97,19 @@
                         <button class="tx-quick-btn" data-amount="10000000">10M</button>
                         <button class="tx-quick-btn" data-amount="50000000">50M</button>
                     </div>
-                    <button id="tx-bet-btn">ĐẶT CƯỢC</button>
-                    <div id="tx-result-list" style="margin-top:15px;"></div>
+                    <div class="tx-bet-action">
+                        <input id="tx-bet-amount" type="number" min="1000" step="1000" placeholder="Số tiền cược">
+                        <button id="tx-bet-btn">ĐẶT CƯỢC</button>
+                    </div>
+                    <div class="tx-result-list-box">
+                        <div id="tx-result-list"></div>
+                        <button id="tx-copy-btn" class="tx-copy-btn">COPY</button>
+                    </div>
                 </div>
             </div>
             <div class="main-flex-right">
                 <div class="user-history-section">
-                    <h3>Lịch sử Nạp/Rút của bạn</h3>
+                    <h3>Lịch sử Nạp/Rút</h3>
                     <table>
                         <thead>
                             <tr>
@@ -147,7 +125,7 @@
                     </table>
                 </div>
                 <div class="user-stats-section">
-                    <h3>Lịch sử cược của bạn</h3>
+                    <h3>Lịch sử cược</h3>
                     <table id="userStatsTable">
                         <thead>
                             <tr>
@@ -159,43 +137,6 @@
                             </tr>
                         </thead>
                         <tbody><tr><td colspan="5">Chưa có dữ liệu</td></tr></tbody>
-                    </table>
-                </div>
-                <div class="multi-bets-section">
-                    <h3>Lịch sử đặt cược theo phiên (toàn bộ người chơi)</h3>
-                    <table id="multiUserBetsTable" class="bets-history-table">
-                        <thead>
-                            <tr>
-                                <th>Phiên</th>
-                                <th>Người chơi</th>
-                                <th>Cược</th>
-                                <th>Số tiền</th>
-                                <th>Kết quả</th>
-                                <th>Thời gian</th>
-                            </tr>
-                        </thead>
-                        <tbody><tr><td colspan="6">Chưa có dữ liệu</td></tr></tbody>
-                    </table>
-                </div>
-                <div id="adminPanel" style="display:none;">
-                    <h3>Bảng điều khiển Admin</h3>
-                    <h4>Yêu cầu nạp/rút chờ xác nhận:</h4>
-                    <table id="adminRequestsTable">
-                        <thead>
-                            <tr>
-                                <th>Thời gian</th><th>User</th><th>Loại</th><th>Số tiền</th><th>Mã</th><th>Trạng thái</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                    <h4>Lịch sử cược toàn hệ thống</h4>
-                    <table id="adminBetsTable">
-                        <thead>
-                            <tr>
-                                <th>User</th><th>Thời gian</th><th>Phiên</th><th>Cược</th><th>Số tiền</th><th>Tổng</th><th>KQ</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
                     </table>
                 </div>
             </div>
@@ -241,11 +182,11 @@
             </div>
         </form>
     </div>
-    <!-- Popup Lịch sử kết quả -->
     <div id="resultHistoryPage" style="display:none;position:fixed;z-index:1001;left:0;top:0;width:100vw;height:100vh;align-items:center;justify-content:center;">
         <div id="resultHistoryPageContent" style="position:relative"></div>
         <button class="result-history-close-btn" id="resultHistoryPageCloseBtn" style="position:absolute;top:18px;right:28px;font-size:2rem;background:none;border:none;color:#FFD700;cursor:pointer;">×</button>
     </div>
+    <button id="openResultHistoryBtn" class="tx-copy-btn" style="position:fixed;bottom:30px;right:30px;z-index:1002;">KẾT QUẢ</button>
     <script src="main.js"></script>
 </body>
 </html>
