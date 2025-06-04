@@ -87,9 +87,10 @@ async function getUserBets(username) {
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'bets!A2:J',
+    range: 'bets!A2:J', // Chuẩn theo ảnh
   });
   const bets = res.data.values || [];
+  // Luôn trả về [] nếu không có, không throw
   return bets
     .filter(row => row[1] === username)
     .map(row => ({
