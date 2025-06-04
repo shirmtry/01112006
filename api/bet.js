@@ -176,7 +176,7 @@ router.post('/settle', async (req, res) => {
         let isTai = (sum >= 11 && sum <= 17);
         let result = ((side === 'tai' && isTai) || (side === 'xiu' && !isTai)) ? 'win' : 'lose';
         if (result === 'win') {
-          // Cộng lại tiền thắng (tiền thắng = amount * 2, bạn tuỳ chỉnh nếu muốn)
+          // Cộng lại tiền thắng (tiền thắng = amount * 2)
           await updateUserBalance(auth, username, amount * 2);
         }
         // Update dòng bet
