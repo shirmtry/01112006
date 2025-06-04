@@ -48,7 +48,6 @@ body {
   .main-content-flex { gap: 18px; }
   .game-area { margin-top: 18px; }
 }
-/* Auth Forms */
 .auth-wrapper {
   display: flex;
   justify-content: center;
@@ -173,7 +172,6 @@ body {
   color: var(--gold-color);
   border-color: var(--gold-color);
 }
-/* Main Content */
 #mainContent {
   max-width: 1200px;
   margin: 0 auto;
@@ -190,7 +188,6 @@ body {
   padding-top: 0 !important;
   margin-top: 0 !important;
 }
-/* Bank Section and Buttons */
 .bank-section {
   background: rgba(15,52,96,0.87);
   color: var(--gold-color);
@@ -240,7 +237,6 @@ body {
   box-shadow: 0 6px 24px #6a309366;
   transform: scale(1.03);
 }
-/* Bank page form popup */
 .bank-page {
   width: 100vw;
   min-height: 100vh;
@@ -371,7 +367,6 @@ body {
 .deposit-code-row .bank-code-txt {
   margin-left: 0;
 }
-/* Tables */
 .user-history-section, .user-stats-section {
   background: rgba(15,52,96,0.87);
   color: var(--text-light);
@@ -423,7 +418,6 @@ body {
 .user-stats-section tr:hover {
   background: rgba(106, 48, 147, 0.13);
 }
-/* Admin Panel */
 #adminPanel {
   background: rgba(15,52,96,0.85);
   color: var(--gold-color);
@@ -460,7 +454,6 @@ body {
   color: #F44336;
   font-weight: 700;
 }
-/* Logout Button */
 #logoutBtn {
   margin: 20px auto;
   display: block;
@@ -480,7 +473,6 @@ body {
   box-shadow: 0 8px 22px rgba(244,67,54,0.28);
   background: #d32f2f;
 }
-/* Game UI */
 .tx-header {
   text-align: center;
   margin-bottom: 30px;
@@ -530,7 +522,6 @@ body {
   padding: 28px 24px;
   font-size: 22px;
 }
-
 .tx-col.tx-tai {
   background: linear-gradient(120deg, #a044ff 0%, #6a3093 100%);
   color: #fff;
@@ -603,7 +594,49 @@ body {
   font-weight: 600;
   color: var(--gold-color);
 }
-/* Input, button, quick bet */
+.tx-dice-3d-wrap {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  align-items: center;
+  margin: 12px 0 10px 0;
+}
+.tx-dice-3d {
+  width: 54px;
+  height: 54px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 1s cubic-bezier(.42,2.41,.36,1);
+  margin: 0 6px;
+  box-shadow: 0 2px 16px #0008;
+}
+.tx-dice-3d .face {
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  background: #fff;
+  color: #6a3093;
+  font-size: 2rem;
+  font-weight: 900;
+  border-radius: 12px;
+  box-shadow: 0 2px 14px #0003;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+  user-select: none;
+  border: 3px solid #a044ff22;
+}
+.tx-dice-3d .face.front   { transform: rotateY(0deg) translateZ(27px);}
+.tx-dice-3d .face.back    { transform: rotateY(180deg) translateZ(27px);}
+.tx-dice-3d .face.right   { transform: rotateY(90deg) translateZ(27px);}
+.tx-dice-3d .face.left    { transform: rotateY(-90deg) translateZ(27px);}
+.tx-dice-3d .face.top     { transform: rotateX(90deg) translateZ(27px);}
+.tx-dice-3d .face.bottom  { transform: rotateX(-90deg) translateZ(27px);}
+@media (max-width: 600px) {
+  .tx-dice-3d, .tx-dice-3d .face { width: 34px; height: 34px; }
+  .tx-dice-3d .face { font-size: 1.1rem; border-radius: 8px; }
+}
 .tx-bet-row {
   display: flex;
   justify-content: center;
@@ -662,7 +695,6 @@ body {
   cursor: not-allowed;
   box-shadow: none;
 }
-/* Quick bets */
 .tx-quick-bets {
   margin: 0 auto 22px auto;
   display: flex;
@@ -692,7 +724,6 @@ body {
   transform: scale(1.06);
   box-shadow: 0 4px 16px #a044ff44;
 }
-/* Result bar */
 .tx-result-bar {
   display: flex;
   align-items: center;
@@ -763,7 +794,6 @@ body {
   transform: scale(1.07);
   box-shadow: 0 4px 12px #FFD70066;
 }
-/* Responsive */
 @media (max-width: 1200px) {
   .tx-board { gap: 16px; }
   .tx-col, .tx-center-col { min-width: 180px; }
