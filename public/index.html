@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2k6 mãi đỉnh</title>
     <link rel="stylesheet" href="ok1.css">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:700,600,400&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- AUTH WRAPPER -->
@@ -66,59 +67,64 @@
         <div class="main-content-flex">
             <!-- GAME AREA -->
             <div class="game-area">
-                <div class="tx-main-container" id="tx-main-container">
-                    <div id="tx-game-ui">
-                        <div class="tx-board">
-                            <div class="tx-left" id="tx-tai-select">
-                                <div class="tx-bet-title tai">TÀI</div>
-                                <div class="tx-bet-total" id="tx-tai-total">0</div>
-                            </div>
-                            <div class="tx-center">
-                                <div class="tx-round-id">#<span id="tx-round-id">1</span></div>
-                                <div class="tx-dial-wrap">
-                                    <div class="tx-dial" id="tx-dial">
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-tick"></div>
-                                        <div class="tx-dial-num" id="tx-dial-num">12</div>
+                <div class="tx-game-root">
+                    <div class="tx-board">
+                        <div class="tx-col tx-tai" id="tx-tai-select">
+                            <div class="tx-label">TÀI</div>
+                            <div class="tx-total" id="tx-tai-total">0</div>
+                        </div>
+                        <div class="tx-center-col">
+                            <div class="tx-round">#<span id="tx-round-id">1</span></div>
+                            <div class="tx-clock-wrap">
+                                <div class="tx-clock" id="tx-dial">
+                                    <div class="tx-clock-face">
+                                        <div class="tx-clock-num" id="tx-dial-num">12</div>
+                                        <div class="tx-clock-ticks">
+                                            <div class="tx-tick" style="transform: rotate(0deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(30deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(60deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(90deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(120deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(150deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(180deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(210deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(240deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(270deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(300deg) translateY(-70px);"></div>
+                                            <div class="tx-tick" style="transform: rotate(330deg) translateY(-70px);"></div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="tx-time">⏰ <span id="tx-timer">30</span>s</div>
                             </div>
-                            <div class="tx-right" id="tx-xiu-select">
-                                <div class="tx-bet-title xiu">XỈU</div>
-                                <div class="tx-bet-total" id="tx-xiu-total">0</div>
+                            <div class="tx-timer">
+                                <span class="tx-timer-icon">⏰</span>
+                                <span id="tx-timer">30</span>s
                             </div>
                         </div>
-                        <div class="tx-bet-row">
-                            <input type="number" id="tx-bet-amount" min="0" value="0" class="tx-bet-input" placeholder="0">
-                            <button class="tx-bet-btn" id="tx-bet-btn">CƯỢC</button>
-                            <button class="tx-nan-btn" id="tx-nan-btn">NỆN</button>
+                        <div class="tx-col tx-xiu" id="tx-xiu-select">
+                            <div class="tx-label">XỈU</div>
+                            <div class="tx-total" id="tx-xiu-total">0</div>
                         </div>
-                        <div class="tx-quick-row">
-                            <button class="tx-quick-btn" data-amount="1000">1K</button>
-                            <button class="tx-quick-btn" data-amount="5000">5K</button>
-                            <button class="tx-quick-btn" data-amount="10000">10K</button>
-                            <button class="tx-quick-btn" data-amount="50000">50K</button>
-                            <button class="tx-quick-btn" data-amount="100000">100K</button>
-                            <button class="tx-quick-btn" data-amount="500000">500K</button>
-                            <button class="tx-quick-btn" data-amount="1000000">1M</button>
-                            <button class="tx-quick-btn" data-amount="10000000">10M</button>
-                        </div>
-                        <div class="tx-result-row">
-                            <div class="tx-result-label">KẾT QUẢ</div>
-                            <div class="tx-result-list" id="tx-result-list"></div>
-                            <button id="tx-copy-btn" class="tx-copy-btn">COPY</button>
-                        </div>
+                    </div>
+                    <div class="tx-bet-row">
+                        <input type="number" id="tx-bet-amount" class="tx-bet-input" value="0" min="0">
+                        <button id="tx-bet-btn" class="tx-btn tx-btn-bet">CƯỢC</button>
+                        <button id="tx-nan-btn" class="tx-btn tx-btn-nan">NỆN</button>
+                    </div>
+                    <div class="tx-quick-bets">
+                        <button class="tx-quick-btn" data-amount="1000">1K</button>
+                        <button class="tx-quick-btn" data-amount="5000">5K</button>
+                        <button class="tx-quick-btn" data-amount="10000">10K</button>
+                        <button class="tx-quick-btn" data-amount="50000">50K</button>
+                        <button class="tx-quick-btn" data-amount="100000">100K</button>
+                        <button class="tx-quick-btn" data-amount="500000">500K</button>
+                        <button class="tx-quick-btn" data-amount="1000000">1M</button>
+                        <button class="tx-quick-btn" data-amount="10000000">10M</button>
+                    </div>
+                    <div class="tx-result-bar">
+                        <span class="tx-result-label">KẾT QUẢ</span>
+                        <div id="tx-result-list" class="tx-result-list"></div>
+                        <button id="tx-copy-btn" class="tx-copy-btn">COPY</button>
                     </div>
                 </div>
             </div>
