@@ -90,7 +90,7 @@ router.get('/', async (req, res) => {
     if (!user) return res.status(404).json({ error: "Không tìm thấy user." });
     return res.status(200).json(user);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.message || 'Lỗi máy chủ' });
   }
 });
 
@@ -103,7 +103,7 @@ router.post('/', async (req, res) => {
     await appendUser({ username, passwordHash, balance, ip, role });
     return res.status(201).json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.message || 'Lỗi máy chủ' });
   }
 });
 
@@ -114,7 +114,7 @@ router.patch('/', async (req, res) => {
     await updateUserFields(username, fields);
     return res.status(200).json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.message || 'Lỗi máy chủ' });
   }
 });
 
@@ -125,7 +125,7 @@ router.delete('/', async (req, res) => {
     await deleteUser(username);
     return res.status(200).json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.message || 'Lỗi máy chủ' });
   }
 });
 
