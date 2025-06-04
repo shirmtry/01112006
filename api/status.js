@@ -1,23 +1,19 @@
 const express = require('express');
 const router = express.Router();
 
-// Trạng thái toàn bộ phiên game (chung cho mọi user)
 let txStatus = {
   round: 1,
   timer: 30,
   totalTai: 0,
   totalXiu: 0,
-  result: null, // "tai" | "xiu"
+  result: null,
   sum: null,
   dice: [0, 0, 0]
 };
 
-// Lưu cược tạm thời cho phiên hiện tại
-let bets = []; // {username, side, amount, time, round}
-
+let bets = [];
 let timerInterval = null;
 
-// Hàm random xúc xắc
 function rollDice() {
   return [
     1 + Math.floor(Math.random() * 6),
@@ -33,28 +29,20 @@ function calcResult(dice) {
   };
 }
 
-// Khởi động timer tự động đổi phiên
 function startRound() {
   if (timerInterval) clearInterval(timerInterval);
   txStatus.timer = 30;
   timerInterval = setInterval(() => {
     txStatus.timer--;
     if (txStatus.timer <= 0) {
-      // Kết thúc phiên, tính kết quả
       const dice = rollDice();
       const { sum, result } = calcResult(dice);
       txStatus.dice = dice;
       txStatus.sum = sum;
       txStatus.result = result;
-
-      // Reset tổng cược tài/xỉu
       txStatus.totalTai = 0;
       txStatus.totalXiu = 0;
-
-      // Reset cược tạm thời
       bets = [];
-
-      // Sang phiên mới
       txStatus.round++;
       txStatus.timer = 30;
     }
@@ -62,12 +50,10 @@ function startRound() {
 }
 startRound();
 
-// Lấy trạng thái phiên hiện tại
 router.get('/', (req, res) => {
   res.json(txStatus);
 });
 
-// API đặt cược (client gọi)
 router.post('/bet', (req, res) => {
   const { username, side, amount } = req.body;
   if (!username || !side || !amount) {
@@ -80,7 +66,6 @@ router.post('/bet', (req, res) => {
   res.json({ success: true });
 });
 
-// Cho admin hoặc backend update kết quả thủ công (nếu cần)
 router.post('/update', (req, res) => {
   const { round, timer, totalTai, totalXiu, result, sum, dice } = req.body;
   if (round !== undefined) txStatus.round = round;
