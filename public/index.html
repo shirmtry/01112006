@@ -183,8 +183,24 @@
                 </div>
                 <div id="adminPanel" style="display:none;">
                     <h3>Bảng điều khiển Admin</h3>
-                    <h4>Yêu cầu nạp tiền chờ xác nhận:</h4>
-                    <ul id="adminRequests" class="admin-list"></ul>
+                    <h4>Yêu cầu nạp/rút chờ xác nhận:</h4>
+                    <table id="adminRequestsTable">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th><th>User</th><th>Loại</th><th>Số tiền</th><th>Mã</th><th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <h4>Lịch sử cược toàn hệ thống</h4>
+                    <table id="adminBetsTable">
+                        <thead>
+                            <tr>
+                                <th>User</th><th>Thời gian</th><th>Phiên</th><th>Cược</th><th>Số tiền</th><th>Tổng</th><th>KQ</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
         </div>
