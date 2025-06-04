@@ -446,6 +446,10 @@ async function loadUserInfo(username) {
 async function loadUserBetHistory(username) {
     try {
         const res = await fetch(`/api/bet/history?username=${encodeURIComponent(username)}`);
+        if (!res.ok) {
+            const err = await res.json().catch(()=>'');
+            throw new Error(`Status: ${res.status}, Detail: ${(err && err.error) || ''}`);
+        }
         const bets = await res.json();
         let html = '';
         if(Array.isArray(bets) && bets.length) {
@@ -453,12 +457,12 @@ async function loadUserBetHistory(username) {
                 html += `<tr>
                     <td>${bet.timestamp || bet.time || ''}</td>
                     <td>${(bet.side || bet.bet_side)?.toUpperCase() || ''} (${Number(bet.amount).toLocaleString() || ''})</td>
-                    <td>${bet.result === 'win' ? '<b style="color:var(--win-color)">Thắng</b>' : (bet.result === 'lose' ? '<b style="color:var(--lose-color)">Thua</b>' : 'Đang chờ')}</td>
+                    <td>${bet.result === 'win' ? '<b style="color:green">Thắng</b>' : (bet.result === 'lose' ? '<b style="color:red">Thua</b>' : 'Đang chờ')}</td>
                     <td>${bet.sum || ''} ${bet.dice1 ? `(${bet.dice1}-${bet.dice2}-${bet.dice3})` : ''}</td>
                     <td>${bet.result === 'win'
-                        ? '<b style="color:var(--win-color)">Thắng</b>'
+                        ? '<b style="color:green">Thắng</b>'
                         : bet.result === 'lose'
-                        ? '<b style="color:var(--lose-color)">Thua</b>'
+                        ? '<b style="color:red">Thua</b>'
                         : 'Đang chờ'}</td>
                 </tr>`;
             });
@@ -467,10 +471,10 @@ async function loadUserBetHistory(username) {
         }
         document.querySelector('#userStatsTable tbody').innerHTML = html;
     } catch (e) {
-        document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Không tải được</td></tr>';
+        // Hiển thị lỗi chi tiết ra HTML cho debug
+        document.querySelector('#userStatsTable tbody').innerHTML = `<tr><td colspan="5">Không tải được: ${e.message}</td></tr>`;
     }
 }
-
 // ==================== GAME BOARD ====================
 function updateBoard() {
     if (document.getElementById("tx-round-id")) document.getElementById("tx-round-id").textContent = round;
