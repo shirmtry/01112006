@@ -12,25 +12,31 @@ async function getUsers() {
     range: SHEET_NAME,
   });
   const [header, ...rows] = resp.data.values || [];
+  if (!header) return [];
   return rows.map(row => {
     const user = {};
-    header.forEach((key, i) => user[key] = row[i]);
+    header.forEach((key, i) => user[key] = row[i] || "");
     return user;
   });
 }
 
-async function appendUser(data) {
+async function getUserByUsername(username) {
+  const users = await getUsers();
+  return users.find(u => (u.username || '').toLowerCase() === username.toLowerCase());
+}
+
+async function appendUser({ username, passwordHash, balance = 0, ip = "", role = "user" }) {
   const sheets = await getSheetsClient();
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
     range: SHEET_NAME,
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
-    resource: { values: [data] }
+    resource: { values: [[username, passwordHash, balance, ip, role]] }
   });
 }
 
-async function updateUser(username, fields) {
+async function updateUserFields(username, fields) {
   const sheets = await getSheetsClient();
   const resp = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
@@ -92,12 +98,11 @@ router.get('/', async (req, res) => {
 // POST: /api/user
 router.post('/', async (req, res) => {
   try {
-    const { username, passwordHash, balance = 0, ip, role = "user" } = req.body;
+    const { username, passwordHash, balance = 0, ip = "", role = "user" } = req.body;
     if (!username || !passwordHash) return res.status(400).json({ error: "Thiếu username hoặc password." });
-    const users = await getUsers();
-    if (users.some(u => (u.username || '').toLowerCase() === username.toLowerCase()))
-      return res.status(400).json({ error: "Username đã tồn tại." });
-    await appendUser([username, passwordHash, balance, ip, role]);
+    const exists = await getUserByUsername(username);
+    if (exists) return res.status(400).json({ error: "Username đã tồn tại." });
+    await appendUser({ username, passwordHash, balance, ip, role });
     return res.status(201).json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -109,7 +114,7 @@ router.patch('/', async (req, res) => {
   try {
     const { username, ...fields } = req.body;
     if (!username) return res.status(400).json({ error: "Thiếu username." });
-    await updateUser(username, fields);
+    await updateUserFields(username, fields);
     return res.status(200).json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
