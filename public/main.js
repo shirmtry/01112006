@@ -56,6 +56,7 @@ let round = 1;
 let timer = 30;
 let interval;
 let betSide = "tai";
+let quickBetAmount = 0;
 let userBets = { tai: 0, xiu: 0 };
 let totalTai = 0;
 let totalXiu = 0;
@@ -66,22 +67,20 @@ const BET_AMOUNTS = [1000, 10000, 100000, 500000, 5000000, 10000000, 50000000];
 
 document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
-   
-    // Login/Register form toggles
+    document.body.classList.add('loaded');
+
     if (document.getElementById('showRegisterLink')) document.getElementById('showRegisterLink').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById("loginForm").style.display = "none";
         document.getElementById("registerForm").style.display = "block";
         generateCaptcha('reg_');
     });
-   
     if (document.getElementById('showLoginLink')) document.getElementById('showLoginLink').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById("loginForm").style.display = "block";
         document.getElementById("registerForm").style.display = "none";
         generateCaptcha();
     });
-   
     if (document.getElementById('logoutBtn')) document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.removeItem('current_user');
         localStorage.removeItem('is_admin');
@@ -95,7 +94,7 @@ document.addEventListener("DOMContentLoaded", function() {
         document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Chưa có dữ liệu</td></tr>';
     });
 
-    // Deposit page functionality
+    // Deposit popup
     const openDepositBtn = document.getElementById('openDepositPageBtn');
     const depositPage = document.getElementById('depositPage');
     if (openDepositBtn && depositPage) {
@@ -106,28 +105,23 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById('depositPageGenCodeBtn').disabled = true;
             document.getElementById('depositPageSubmitBtn').disabled = true;
         };
-       
         document.getElementById('depositPageCloseBtn').onclick = function() {
             depositPage.style.display = "none";
         };
-       
         document.getElementById('depositPageAmount').oninput = function() {
             const v = parseInt(this.value, 10);
             document.getElementById('depositPageGenCodeBtn').disabled = !(v && v >= 1000);
             document.getElementById('depositPageCodeTxt').textContent = "";
             document.getElementById('depositPageSubmitBtn').disabled = true;
         };
-       
         document.getElementById('depositPageGenCodeBtn').onclick = function() {
             document.getElementById('depositPageCodeTxt').textContent = randomCode();
             document.getElementById('depositPageSubmitBtn').disabled = false;
         };
-       
         document.getElementById('depositPageSubmitBtn').onclick = async function() {
             const username = localStorage.getItem('current_user');
             const amount = parseInt(document.getElementById('depositPageAmount').value);
             const code = document.getElementById('depositPageCodeTxt').textContent;
-           
             if (!amount || isNaN(amount) || amount < 1000) {
                 alert("Vui lòng nhập số tiền nạp hợp lệ (>= 1000)!");
                 return;
@@ -136,7 +130,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 alert("Vui lòng tạo mã chuyển khoản!");
                 return;
             }
-           
             await fetch(API_REQUESTS, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -150,14 +143,13 @@ document.addEventListener("DOMContentLoaded", function() {
                     timestamp: new Date().toLocaleString()
                 })
             });
-           
             alert("Gửi yêu cầu nạp tiền thành công! Vui lòng chờ admin xác nhận.");
             depositPage.style.display = "none";
             await loadUserHistory(username);
         };
     }
-   
-    // Withdraw page functionality
+
+    // Withdraw popup
     const openWithdrawBtn = document.getElementById('openWithdrawPageBtn');
     const withdrawPage = document.getElementById('withdrawPage');
     if (openWithdrawBtn && withdrawPage) {
@@ -169,11 +161,9 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById('withdrawPageAmount').value = "";
             document.getElementById('withdrawPageSubmitBtn').disabled = true;
         };
-       
         document.getElementById('withdrawPageCloseBtn').onclick = function() {
             withdrawPage.style.display = "none";
         };
-       
         const withdrawInputs = ['withdrawPageBank', 'withdrawPageAccount', 'withdrawPageHolder', 'withdrawPageAmount'];
         withdrawInputs.forEach(id => {
             document.getElementById(id).oninput = function() {
@@ -184,32 +174,27 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById('withdrawPageSubmitBtn').disabled = !(bank && acc && holder && amount && amount >= 1000);
             };
         });
-       
         document.getElementById('withdrawPageSubmitBtn').onclick = async function() {
             const username = localStorage.getItem('current_user');
             const bank = document.getElementById('withdrawPageBank').value.trim();
             const acc = document.getElementById('withdrawPageAccount').value.trim();
             const holder = document.getElementById('withdrawPageHolder').value.trim();
             const amount = parseInt(document.getElementById('withdrawPageAmount').value);
-           
             if (!bank || !acc || !holder || !amount || isNaN(amount) || amount < 1000) {
                 alert("Vui lòng nhập đầy đủ thông tin và số tiền hợp lệ (>= 1000)!");
                 return;
             }
-           
             const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
             const user = await res.json();
             if (!user || user.balance === undefined || parseInt(user.balance) < amount) {
                 alert("Số dư không đủ để rút!");
                 return;
             }
-           
             await fetch(API_USERS, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, balance: parseInt(user.balance) - amount })
             });
-           
             await fetch(API_REQUESTS, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -223,15 +208,64 @@ document.addEventListener("DOMContentLoaded", function() {
                     timestamp: new Date().toLocaleString()
                 })
             });
-           
             alert("Gửi yêu cầu rút tiền thành công! Số dư đã trừ, vui lòng chờ xác nhận từ admin.");
             withdrawPage.style.display = "none";
             await loadUserInfo(username);
             await loadUserHistory(username);
         };
     }
-   
-    // Initialize based on login state
+
+    // Kết quả toàn phiên (popup)
+    if (document.getElementById('openResultHistoryBtn')) {
+        document.getElementById('openResultHistoryBtn').onclick = async function() {
+            let results = await fetch('/api/bet/all').then(r=>r.json());
+            renderResultHistoryDiv(results);
+            document.getElementById('resultHistoryPage').style.display = "flex";
+        }
+    }
+    if (document.getElementById('resultHistoryPageCloseBtn')) {
+        document.getElementById('resultHistoryPageCloseBtn').onclick = function() {
+            document.getElementById('resultHistoryPage').style.display = "none";
+        };
+    }
+
+    // Game board event listeners
+    document.querySelectorAll(".tx-quick-btn").forEach(btn=>{
+        btn.onclick = function() {
+            document.getElementById("tx-bet-amount").value = parseInt(this.dataset.amount);
+            document.querySelectorAll(".tx-quick-btn").forEach(b=>b.classList.remove("selected"));
+            this.classList.add("selected");
+        };
+    });
+    if(document.getElementById("tx-tai-select")) document.getElementById("tx-tai-select").onclick = function() {
+        betSide = "tai";
+        updateBoard();
+    };
+    if(document.getElementById("tx-xiu-select")) document.getElementById("tx-xiu-select").onclick = function() {
+        betSide = "xiu";
+        updateBoard();
+    };
+    if(document.getElementById("tx-bet-btn")) document.getElementById("tx-bet-btn").onclick = function() {
+        let amt = parseInt(document.getElementById("tx-bet-amount").value);
+        if(isNaN(amt)||amt<=0) {
+            alert("Vui lòng nhập số tiền cược > 0");
+            return;
+        }
+        userBets[betSide] += amt;
+        if (betSide === "tai") totalTai += amt;
+        if (betSide === "xiu") totalXiu += amt;
+        document.getElementById("tx-bet-amount").value = userBets[betSide];
+        updateBoard();
+        this.disabled = true;
+        alert(`Đã cược ${amt.toLocaleString()} vào ${betSide.toUpperCase()}`);
+    };
+    if(document.getElementById("tx-copy-btn")) document.getElementById("tx-copy-btn").onclick = function() {
+        let txt = resultHistory.slice(0,20).map(x=>x.sum).join(" - ");
+        navigator.clipboard.writeText(txt);
+        alert("Đã copy kết quả!");
+    };
+
+    // Init after login
     const currentUser = localStorage.getItem('current_user');
     if (currentUser) {
         enableDepositWithdrawButtons();
@@ -240,143 +274,13 @@ document.addEventListener("DOMContentLoaded", function() {
     } else {
         disableDepositWithdrawButtons();
     }
-   
-    if (localStorage.getItem('is_admin') === '1') {
-        showAdminPanel();
-        loadAdminRequestsTable();
-        loadAdminBetsTable();
-    }
-   
-    // Result history page
-    if (document.getElementById('openResultHistoryBtn')) {
-        document.getElementById('openResultHistoryBtn').onclick = async function() {
-            let results = await fetch('/api/bet/all').then(r=>r.json());
-            renderResultHistoryDiv(results);
-            document.getElementById('resultHistoryPage').style.display = "flex";
-        }
-    }
-   
-    if (document.getElementById('resultHistoryPageCloseBtn')) {
-        document.getElementById('resultHistoryPageCloseBtn').onclick = function() {
-            document.getElementById('resultHistoryPage').style.display = "none";
-        }
-    }
-   
-    // Initialize game board if elements exist
-    if(document.getElementById("tx-main-container") || document.getElementById("tx-dial")) {
-        updateBoard();
-        startTimer();
-    }
+
+    // Game board
+    for(let i=1;i<=3;++i) renderDice3D(document.getElementById('dice3d-'+i), Math.floor(Math.random()*6)+1);
+    updateBoard();
+    startTimer();
 });
 
-// Registration handler
-if (document.getElementById('registerBtn')) document.getElementById('registerBtn').addEventListener('click', async () => {
-    const username = document.getElementById('reg_username').value.trim();
-    const password = document.getElementById('reg_password').value;
-    const password2 = document.getElementById('reg_password2').value;
-    const captcha = (document.getElementById('reg_captcha').value || '').trim().toUpperCase();
-    const captchaCode = (document.getElementById('reg_captchaDisplay').textContent || '').trim().toUpperCase();
-
-    if (!username || !password || !password2 || !captcha) {
-        alert('Vui lòng nhập đầy đủ thông tin.');
-        return;
-    }
-    if (password !== password2) {
-        alert('Mật khẩu nhập lại chưa khớp!');
-        return;
-    }
-    if (captcha !== captchaCode) {
-        alert('Mã captcha chưa đúng!');
-        generateCaptcha('reg_');
-        return;
-    }
-
-    try {
-        const check = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
-        const found = await check.json();
-        if (found && found.username && found.username.toLowerCase() === username.toLowerCase()) {
-            alert('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!');
-            return;
-        }
-        if (Array.isArray(found) && found.some(u => u.username && u.username.toLowerCase() === username.toLowerCase())) {
-            alert('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!');
-            return;
-        }
-    } catch (e) {}
-
-    let ip = "";
-    try {
-        const ipres = await fetch("https://api.ipify.org?format=json");
-        const ipjson = await ipres.json();
-        ip = ipjson.ip || "";
-    } catch (e) { ip = ""; }
-
-    try {
-        await fetch(API_USERS, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username,
-                passwordHash: hashString(password),
-                balance: 0,
-                ip,
-                role: "user"
-            })
-        });
-        alert('Đăng ký thành công, bạn đã được đăng nhập!');
-        localStorage.setItem('current_user', username);
-        localStorage.setItem('is_admin', ADMIN_USERNAMES.includes(username) ? '1' : '');
-        document.getElementById("registerForm").style.display = "none";
-        document.getElementById("mainContent").style.display = "block";
-        await afterLoginOrRegister();
-    } catch (e) {
-        alert('Lỗi kết nối, thử lại sau!');
-    }
-});
-
-// Login handler
-if (document.getElementById('loginBtn')) document.getElementById('loginBtn').addEventListener('click', async () => {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    const captcha = (document.getElementById('captcha').value || '').trim().toUpperCase();
-    const captchaCode = (document.getElementById('captchaDisplay').textContent || '').trim().toUpperCase();
-
-    if (!username || !password || !captcha) {
-        alert('Vui lòng điền đầy đủ thông tin đăng nhập!');
-        return;
-    }
-    if (captcha !== captchaCode) {
-        alert('Mã captcha chưa đúng!');
-        generateCaptcha();
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
-        if (!res.ok) {
-            alert('Lỗi máy chủ, thử lại sau!');
-            return;
-        }
-        const user = await res.json();
-        if (!user || !user.passwordHash) {
-            alert('Tài khoản không tồn tại hoặc có dữ liệu lỗi!');
-            return;
-        }
-        if (user.passwordHash != hashString(password)) {
-            alert('Mật khẩu không đúng!');
-            return;
-        }
-        localStorage.setItem('current_user', username);
-        localStorage.setItem('is_admin', ADMIN_USERNAMES.includes(username) ? '1' : '');
-        document.getElementById('loginForm').style.display = 'none';
-        document.getElementById('mainContent').style.display = 'block';
-        await afterLoginOrRegister();
-    } catch (e) {
-        alert('Lỗi đăng nhập, thử lại sau!');
-    }
-});
-
-// User history functions
 async function loadUserHistory(username) {
     try {
         const res = await fetch(`${API_REQUESTS}?username=${encodeURIComponent(username)}`);
@@ -441,104 +345,12 @@ async function loadUserBetHistory(username) {
     }
 }
 
-// Admin functions
-function showAdminPanel() {
-    if (document.getElementById("adminPanel")) document.getElementById("adminPanel").style.display = "block";
-}
-
-async function loadAdminRequestsTable() {
-    if (!document.getElementById('adminRequestsTable')) return;
-    try {
-        const res = await fetch(`${API_REQUESTS}`);
-        const reqs = await res.json();
-        let html = '';
-        if(Array.isArray(reqs) && reqs.length) {
-            reqs.reverse().forEach(req => {
-                html += `<tr>
-                    <td>${req.timestamp || ''}</td>
-                    <td>${req.username || ''}</td>
-                    <td>${req.type === "deposit" ? "Nạp" : (req.type === "withdraw" ? "Rút" : req.type)}</td>
-                    <td>${req.amount?.toLocaleString() || ''}</td>
-                    <td>${req.bank_code || ''}</td>
-                    <td>
-                      <span class="status ${req.status}">${req.status}</span>
-                      ${
-                        req.status === 'pending'
-                        ? `<button onclick="adminApproveRequest('${req._id}','done')">Duyệt</button>
-                           <button onclick="adminApproveRequest('${req._id}','rejected')">Hủy</button>`
-                        : ''
-                      }
-                    </td>
-                </tr>`;
-            });
-        } else {
-            html = '<tr><td colspan="6">Không có yêu cầu nào</td></tr>';
-        }
-        document.querySelector('#adminRequestsTable tbody').innerHTML = html;
-    } catch (e) {
-        document.querySelector('#adminRequestsTable tbody').innerHTML = '<tr><td colspan="6">Không tải được</td></tr>';
-    }
-}
-
-window.adminApproveRequest = async function(requestId, status){
-    await fetch(`${API_REQUESTS}/${requestId}`, {
-        method: "PATCH",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({status})
-    });
-    await loadAdminRequestsTable();
-}
-
-async function loadAdminBetsTable() {
-    if (!document.getElementById('adminBetsTable')) return;
-    try {
-        const res = await fetch(`${API_BETS}`);
-        const bets = await res.json();
-        let html = '';
-        if(Array.isArray(bets) && bets.length) {
-            bets.reverse().forEach(bet => {
-                html += `<tr>
-                    <td>${bet.username || ''}</td>
-                    <td>${bet.time || bet.timestamp || ''}</td>
-                    <td>${bet.round || ''}</td>
-                    <td>${(bet.bet_side || bet.side)?.toUpperCase() || ''}</td>
-                    <td>${bet.amount?.toLocaleString() || ''}</td>
-                    <td>${bet.sum || ''} ${bet.dice1 ? `(${bet.dice1}-${bet.dice2}-${bet.dice3})` : ''}</td>
-                    <td>${bet.result}</td>
-                </tr>`;
-            });
-        } else {
-            html = '<tr><td colspan="7">Không có dữ liệu</td></tr>';
-        }
-        document.querySelector('#adminBetsTable tbody').innerHTML = html;
-    } catch (e) {
-        document.querySelector('#adminBetsTable tbody').innerHTML = '<tr><td colspan="7">Không tải được</td></tr>';
-    }
-}
-
-// Post-login/register actions
-async function afterLoginOrRegister() {
-    const username = localStorage.getItem('current_user');
-    await loadUserInfo(username);
-    enableDepositWithdrawButtons();
-    await loadUserHistory(username);
-    await loadUserBetHistory(username);
-    startTimer();
-    if (localStorage.getItem('is_admin') === '1') {
-        showAdminPanel();
-        loadAdminRequestsTable();
-        loadAdminBetsTable();
-    }
-}
-
-// Game board functions
 function updateBoard() {
     if (document.getElementById("tx-round-id")) document.getElementById("tx-round-id").textContent = round;
     if (document.getElementById("tx-timer")) document.getElementById("tx-timer").textContent = timer;
     if (document.getElementById("tx-tai-total")) document.getElementById("tx-tai-total").textContent = totalTai.toLocaleString();
     if (document.getElementById("tx-xiu-total")) document.getElementById("tx-xiu-total").textContent = totalXiu.toLocaleString();
     if (document.getElementById("tx-bet-amount")) document.getElementById("tx-bet-amount").value = userBets[betSide] || 0;
-    updateDial(dialNum);
     updateResultList();
     if (document.getElementById("tx-tai-select")) document.getElementById("tx-tai-select").classList.toggle("selected", betSide === "tai");
     if (document.getElementById("tx-xiu-select")) document.getElementById("tx-xiu-select").classList.toggle("selected", betSide === "xiu");
@@ -550,15 +362,6 @@ function updateResultList() {
     el.innerHTML = resultHistory.slice(0, 12).map(x =>
         `<span class="tx-result-ball ${x.result}">${x.sum}</span>`
     ).join("");
-}
-
-function updateDial(num) {
-    const dial = document.getElementById("tx-dial");
-    const dialNumEl = document.getElementById("tx-dial-num");
-    if (!dial || !dialNumEl) return;
-    dialNumEl.textContent = num;
-    let deg = ((num-3)/15) * 360;
-    dial.style.transform = `rotate(${deg}deg)`;
 }
 
 function startTimer() {
@@ -576,13 +379,11 @@ function startTimer() {
 }
 
 function settleRound() {
-    let dice = nanActive ? nanningDice() : [randDice(), randDice(), randDice()];
+    let dice = [randDice(), randDice(), randDice()];
     let sum = dice[0]+dice[1]+dice[2];
     let result = sum >= 11 && sum <= 17 ? "tai" : "xiu";
+    let username = localStorage.getItem('current_user');
     dialNum = sum;
-    updateDial(sum);
-
-    const username = localStorage.getItem('current_user');
     if (username && (userBets["tai"] > 0 || userBets["xiu"] > 0)) {
         const bet_side = userBets["tai"] > 0 ? "tai" : "xiu";
         const amount = userBets["tai"] > 0 ? userBets["tai"] : userBets["xiu"];
@@ -598,25 +399,17 @@ function settleRound() {
             })
         }).then(()=>loadUserBetHistory(username));
     }
-
     resultHistory.unshift({sum, result, dice});
     if(resultHistory.length>30) resultHistory.length=30;
     updateResultList();
-    if(document.getElementById('resultHistoryPage') && document.getElementById('resultHistoryPage').style.display === "flex") {
-        renderResultHistoryDiv(resultHistory);
-    }
-
     userBets = { tai: 0, xiu: 0 };
     totalTai = 0;
     totalXiu = 0;
-    nanActive = false;
-
     setTimeout(()=>{
         round++;
         dialNum = 12;
         startTimer();
         if(document.getElementById("tx-bet-btn")) document.getElementById("tx-bet-btn").disabled = false;
-        if(document.getElementById("tx-nan-btn")) document.getElementById("tx-nan-btn").disabled = false;
     }, 3200);
 }
 
@@ -624,74 +417,12 @@ function randDice() {
     return Math.floor(Math.random()*6)+1;
 }
 
-function nanningDice() {
-    let sum = Math.floor(Math.random()*9)+8;
-    for(let i=1;i<=6;i++){
-        for(let j=1;j<=6;j++){
-            let k=sum-i-j;
-            if(k>=1&&k<=6) return [i,j,k];
-        }
-    }
-    return [6,6,6];
-}
-
-// Game board event listeners
-document.addEventListener('DOMContentLoaded', () => {
-    if(document.getElementById("tx-bet-btn")) document.getElementById("tx-bet-btn").onclick = function() {
-        let amt = parseInt(document.getElementById("tx-bet-amount").value);
-        if(isNaN(amt)||amt<=0) {
-            alert("Vui lòng nhập số tiền cược > 0");
-            return;
-        }
-        userBets[betSide] += amt;
-        if (betSide === "tai") totalTai += amt;
-        if (betSide === "xiu") totalXiu += amt;
-        document.getElementById("tx-bet-amount").value = userBets[betSide];
-        updateBoard();
-        this.disabled = true;
-        if(document.getElementById("tx-nan-btn")) document.getElementById("tx-nan-btn").disabled = true;
-        alert(`Đã cược ${amt.toLocaleString()} vào ${betSide.toUpperCase()}`);
-    };
-
-    if(document.getElementById("tx-nan-btn")) document.getElementById("tx-nan-btn").onclick = function() {
-        if(nanActive){
-            alert("Bạn đã nện rồi!");
-            return;
-        }
-        nanActive = true;
-        alert("Bạn đã nện! Tổng sẽ được nện khi hết phiên.");
-        this.disabled = true;
-    };
-
-    document.querySelectorAll(".tx-quick-btn").forEach(btn=>{
-        btn.onclick = function() {
-            document.getElementById("tx-bet-amount").value = parseInt(this.dataset.amount);
-        };
-    });
-
-    if(document.getElementById("tx-tai-select")) document.getElementById("tx-tai-select").onclick = function() {
-        betSide = "tai";
-        updateBoard();
-    };
-   
-    if(document.getElementById("tx-xiu-select")) document.getElementById("tx-xiu-select").onclick = function() {
-        betSide = "xiu";
-        updateBoard();
-    };
-
-    if(document.getElementById("tx-copy-btn")) document.getElementById("tx-copy-btn").onclick = function() {
-        let txt = resultHistory.slice(0,20).map(x=>x.sum).join(" - ");
-        navigator.clipboard.writeText(txt);
-        alert("Đã copy kết quả!");
-    };
-});
-
 // Result history page functions
 function renderResultHistoryDiv(allResults) {
     let html = `<div class="result-history-title"><b>KẾT QUẢ</b></div>
     <div class="result-balls-row">`;
     allResults.forEach(r => {
-        html += `<span class="result-ball ${r.result === 'tai' ? 'tai-ball' : 'xiu-ball'}" title="Phiên #${round} - ${r.dice ? r.dice.join(',') : ''}">
+        html += `<span class="result-ball ${r.result === 'tai' ? 'tai-ball' : 'xiu-ball'}" title="Phiên #${r.round || ''} - ${r.dice ? r.dice.join(',') : ''}">
             ${r.sum}
             ${r.dice ? `<div class="dice-mini">${r.dice.join('-')}</div>` : ''}
         </span>`;
@@ -699,7 +430,6 @@ function renderResultHistoryDiv(allResults) {
     html += `</div>
     <button class="result-copy-btn" id="resultCopyBtn">COPY</button>`;
     document.getElementById('resultHistoryPageContent').innerHTML = html;
-   
     document.getElementById('resultCopyBtn').onclick = function() {
         let txt = allResults.map(x=>x.sum).join(" - ");
         navigator.clipboard.writeText(txt);
@@ -716,7 +446,6 @@ function renderDice3D(elem, value) {
     </div>
     `;
 }
-
 function dice3DRotation(value) {
     const faces = {
         1: 'rotateX(0deg) rotateY(0deg)',
@@ -728,11 +457,9 @@ function dice3DRotation(value) {
     };
     return faces[value] || 'rotateX(0deg) rotateY(0deg)';
 }
-
 function getFaceClass(n) {
     return ["front","back","right","left","top","bottom"][n-1];
 }
-
 function diceFaceDots(value) {
     const dot = '<span class="dice-dot"></span>';
     const faces = {
