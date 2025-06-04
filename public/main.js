@@ -51,20 +51,37 @@ function disableDepositWithdrawButtons() {
     if(document.getElementById('openWithdrawPageBtn')) document.getElementById('openWithdrawPageBtn').disabled = true;
 }
 
+// Game state variables
+let round = 1;
+let timer = 30;
+let interval;
+let betSide = "tai";
+let userBets = { tai: 0, xiu: 0 };
+let totalTai = 0;
+let totalXiu = 0;
+let resultHistory = [];
+let dialNum = 12;
+let nanActive = false;
+const BET_AMOUNTS = [1000, 10000, 100000, 500000, 5000000, 10000000, 50000000];
+
 document.addEventListener("DOMContentLoaded", function() {
     generateCaptcha();
+   
+    // Login/Register form toggles
     if (document.getElementById('showRegisterLink')) document.getElementById('showRegisterLink').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById("loginForm").style.display = "none";
         document.getElementById("registerForm").style.display = "block";
         generateCaptcha('reg_');
     });
+   
     if (document.getElementById('showLoginLink')) document.getElementById('showLoginLink').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById("loginForm").style.display = "block";
         document.getElementById("registerForm").style.display = "none";
         generateCaptcha();
     });
+   
     if (document.getElementById('logoutBtn')) document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.removeItem('current_user');
         localStorage.removeItem('is_admin');
@@ -78,6 +95,7 @@ document.addEventListener("DOMContentLoaded", function() {
         document.querySelector('#userStatsTable tbody').innerHTML = '<tr><td colspan="5">Chưa có dữ liệu</td></tr>';
     });
 
+    // Deposit page functionality
     const openDepositBtn = document.getElementById('openDepositPageBtn');
     const depositPage = document.getElementById('depositPage');
     if (openDepositBtn && depositPage) {
@@ -88,23 +106,28 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById('depositPageGenCodeBtn').disabled = true;
             document.getElementById('depositPageSubmitBtn').disabled = true;
         };
+       
         document.getElementById('depositPageCloseBtn').onclick = function() {
             depositPage.style.display = "none";
         };
+       
         document.getElementById('depositPageAmount').oninput = function() {
             const v = parseInt(this.value, 10);
             document.getElementById('depositPageGenCodeBtn').disabled = !(v && v >= 1000);
             document.getElementById('depositPageCodeTxt').textContent = "";
             document.getElementById('depositPageSubmitBtn').disabled = true;
         };
+       
         document.getElementById('depositPageGenCodeBtn').onclick = function() {
             document.getElementById('depositPageCodeTxt').textContent = randomCode();
             document.getElementById('depositPageSubmitBtn').disabled = false;
         };
+       
         document.getElementById('depositPageSubmitBtn').onclick = async function() {
             const username = localStorage.getItem('current_user');
             const amount = parseInt(document.getElementById('depositPageAmount').value);
             const code = document.getElementById('depositPageCodeTxt').textContent;
+           
             if (!amount || isNaN(amount) || amount < 1000) {
                 alert("Vui lòng nhập số tiền nạp hợp lệ (>= 1000)!");
                 return;
@@ -113,6 +136,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 alert("Vui lòng tạo mã chuyển khoản!");
                 return;
             }
+           
             await fetch(API_REQUESTS, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -126,11 +150,14 @@ document.addEventListener("DOMContentLoaded", function() {
                     timestamp: new Date().toLocaleString()
                 })
             });
+           
             alert("Gửi yêu cầu nạp tiền thành công! Vui lòng chờ admin xác nhận.");
             depositPage.style.display = "none";
             await loadUserHistory(username);
         };
     }
+   
+    // Withdraw page functionality
     const openWithdrawBtn = document.getElementById('openWithdrawPageBtn');
     const withdrawPage = document.getElementById('withdrawPage');
     if (openWithdrawBtn && withdrawPage) {
@@ -142,9 +169,11 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById('withdrawPageAmount').value = "";
             document.getElementById('withdrawPageSubmitBtn').disabled = true;
         };
+       
         document.getElementById('withdrawPageCloseBtn').onclick = function() {
             withdrawPage.style.display = "none";
         };
+       
         const withdrawInputs = ['withdrawPageBank', 'withdrawPageAccount', 'withdrawPageHolder', 'withdrawPageAmount'];
         withdrawInputs.forEach(id => {
             document.getElementById(id).oninput = function() {
@@ -155,27 +184,32 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById('withdrawPageSubmitBtn').disabled = !(bank && acc && holder && amount && amount >= 1000);
             };
         });
+       
         document.getElementById('withdrawPageSubmitBtn').onclick = async function() {
             const username = localStorage.getItem('current_user');
             const bank = document.getElementById('withdrawPageBank').value.trim();
             const acc = document.getElementById('withdrawPageAccount').value.trim();
             const holder = document.getElementById('withdrawPageHolder').value.trim();
             const amount = parseInt(document.getElementById('withdrawPageAmount').value);
+           
             if (!bank || !acc || !holder || !amount || isNaN(amount) || amount < 1000) {
                 alert("Vui lòng nhập đầy đủ thông tin và số tiền hợp lệ (>= 1000)!");
                 return;
             }
+           
             const res = await fetch(`${API_USERS}?username=${encodeURIComponent(username)}`);
             const user = await res.json();
             if (!user || user.balance === undefined || parseInt(user.balance) < amount) {
                 alert("Số dư không đủ để rút!");
                 return;
             }
+           
             await fetch(API_USERS, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, balance: parseInt(user.balance) - amount })
             });
+           
             await fetch(API_REQUESTS, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -189,13 +223,15 @@ document.addEventListener("DOMContentLoaded", function() {
                     timestamp: new Date().toLocaleString()
                 })
             });
+           
             alert("Gửi yêu cầu rút tiền thành công! Số dư đã trừ, vui lòng chờ xác nhận từ admin.");
             withdrawPage.style.display = "none";
             await loadUserInfo(username);
             await loadUserHistory(username);
         };
     }
-
+   
+    // Initialize based on login state
     const currentUser = localStorage.getItem('current_user');
     if (currentUser) {
         enableDepositWithdrawButtons();
@@ -203,20 +239,36 @@ document.addEventListener("DOMContentLoaded", function() {
     } else {
         disableDepositWithdrawButtons();
     }
+   
     if (localStorage.getItem('is_admin') === '1') {
         showAdminPanel();
         loadAdminRequestsTable();
         loadAdminBetsTable();
     }
-
+   
+    // Result history page
     if (document.getElementById('openResultHistoryBtn')) {
-        document.getElementById('openResultHistoryBtn').onclick = openResultHistoryPage;
+        document.getElementById('openResultHistoryBtn').onclick = async function() {
+            let results = await fetch('/api/bet/all').then(r=>r.json());
+            renderResultHistoryDiv(results);
+            document.getElementById('resultHistoryPage').style.display = "flex";
+        }
     }
+   
     if (document.getElementById('resultHistoryPageCloseBtn')) {
-        document.getElementById('resultHistoryPageCloseBtn').onclick = closeResultHistoryPage;
+        document.getElementById('resultHistoryPageCloseBtn').onclick = function() {
+            document.getElementById('resultHistoryPage').style.display = "none";
+        }
+    }
+   
+    // Initialize game board if elements exist
+    if(document.getElementById("tx-main-container") || document.getElementById("tx-dial")) {
+        updateBoard();
+        startTimer();
     }
 });
 
+// Registration handler
 if (document.getElementById('registerBtn')) document.getElementById('registerBtn').addEventListener('click', async () => {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value;
@@ -281,6 +333,7 @@ if (document.getElementById('registerBtn')) document.getElementById('registerBtn
     }
 });
 
+// Login handler
 if (document.getElementById('loginBtn')) document.getElementById('loginBtn').addEventListener('click', async () => {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
@@ -322,6 +375,7 @@ if (document.getElementById('loginBtn')) document.getElementById('loginBtn').add
     }
 });
 
+// User history functions
 async function loadUserHistory(username) {
     try {
         const res = await fetch(`${API_REQUESTS}?username=${encodeURIComponent(username)}`);
@@ -366,10 +420,10 @@ async function loadUserBetHistory(username) {
         if(Array.isArray(bets) && bets.length) {
             bets.reverse().forEach(bet => {
                 html += `<tr>
-                    <td>${bet.time || ''}</td>
-                    <td>${bet.bet_side?.toUpperCase() || ''} (${Number(bet.amount).toLocaleString() || ''})</td>
+                    <td>${bet.time || bet.timestamp || ''}</td>
+                    <td>${(bet.bet_side || bet.side)?.toUpperCase() || ''} (${Number(bet.amount).toLocaleString() || ''})</td>
                     <td>${bet.result === 'win' ? 'TÀI' : (bet.result === 'lose' ? 'XỈU' : '-')}</td>
-                    <td>${bet.sum || ''}</td>
+                    <td>${bet.sum || ''} ${bet.dice1 ? `(${bet.dice1}-${bet.dice2}-${bet.dice3})` : ''}</td>
                     <td>${bet.result === 'win'
                         ? '<b style="color:var(--win-color)">Thắng</b>'
                         : bet.result === 'lose'
@@ -386,6 +440,7 @@ async function loadUserBetHistory(username) {
     }
 }
 
+// Admin functions
 function showAdminPanel() {
     if (document.getElementById("adminPanel")) document.getElementById("adminPanel").style.display = "block";
 }
@@ -443,11 +498,11 @@ async function loadAdminBetsTable() {
             bets.reverse().forEach(bet => {
                 html += `<tr>
                     <td>${bet.username || ''}</td>
-                    <td>${bet.time || ''}</td>
+                    <td>${bet.time || bet.timestamp || ''}</td>
                     <td>${bet.round || ''}</td>
-                    <td>${bet.bet_side?.toUpperCase() || ''}</td>
+                    <td>${(bet.bet_side || bet.side)?.toUpperCase() || ''}</td>
                     <td>${bet.amount?.toLocaleString() || ''}</td>
-                    <td>${bet.sum || ''}</td>
+                    <td>${bet.sum || ''} ${bet.dice1 ? `(${bet.dice1}-${bet.dice2}-${bet.dice3})` : ''}</td>
                     <td>${bet.result}</td>
                 </tr>`;
             });
@@ -460,6 +515,7 @@ async function loadAdminBetsTable() {
     }
 }
 
+// Post-login/register actions
 async function afterLoginOrRegister() {
     const username = localStorage.getItem('current_user');
     await loadUserInfo(username);
@@ -474,18 +530,7 @@ async function afterLoginOrRegister() {
     }
 }
 
-const BET_AMOUNTS_MD5 = [1000, 10000, 100000, 500000, 5000000, 10000000 , 50000000];
-let round = 1;
-let timer = 30;
-let interval;
-let betSide = "tai";
-let userBets = { tai: 0, xiu: 0 };
-let totalTai = 0;
-let totalXiu = 0;
-let resultHistory = [];
-let dialNum = 12;
-let nanActive = false;
-
+// Game board functions
 function updateBoard() {
     if (document.getElementById("tx-round-id")) document.getElementById("tx-round-id").textContent = round;
     if (document.getElementById("tx-timer")) document.getElementById("tx-timer").textContent = timer;
@@ -546,16 +591,18 @@ function settleRound() {
             body: JSON.stringify({
                 username, round, bet_side, amount,
                 result: (bet_side === result ? "win" : "lose"),
-                sum, time: new Date().toLocaleString()
+                sum,
+                dice1: dice[0], dice2: dice[1], dice3: dice[2],
+                time: new Date().toLocaleString()
             })
         }).then(()=>loadUserBetHistory(username));
     }
 
-    resultHistory.unshift({sum, result});
+    resultHistory.unshift({sum, result, dice});
     if(resultHistory.length>30) resultHistory.length=30;
     updateResultList();
     if(document.getElementById('resultHistoryPage') && document.getElementById('resultHistoryPage').style.display === "flex") {
-        renderResultHistoryDiv();
+        renderResultHistoryDiv(resultHistory);
     }
 
     userBets = { tai: 0, xiu: 0 };
@@ -587,6 +634,7 @@ function nanningDice() {
     return [6,6,6];
 }
 
+// Game board event listeners
 document.addEventListener('DOMContentLoaded', () => {
     if(document.getElementById("tx-bet-btn")) document.getElementById("tx-bet-btn").onclick = function() {
         let amt = parseInt(document.getElementById("tx-bet-amount").value);
@@ -624,6 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
         betSide = "tai";
         updateBoard();
     };
+   
     if(document.getElementById("tx-xiu-select")) document.getElementById("tx-xiu-select").onclick = function() {
         betSide = "xiu";
         updateBoard();
@@ -634,43 +683,31 @@ document.addEventListener('DOMContentLoaded', () => {
         navigator.clipboard.writeText(txt);
         alert("Đã copy kết quả!");
     };
-
-    if(document.getElementById("tx-main-container") || document.getElementById("tx-dial")) {
-        updateBoard();
-        startTimer();
-    }
 });
 
-// ======= KẾT QUẢ GẦN ĐÂY - HIỆN TRONG DIV RIÊNG =======
-function renderResultHistoryDiv() {
+// Result history page functions
+function renderResultHistoryDiv(allResults) {
     let html = `<div class="result-history-title"><b>KẾT QUẢ</b></div>
     <div class="result-balls-row">`;
-    const latestResults = resultHistory.slice(0, 12);
-    for(const r of latestResults) {
-        const isTai = r.result === "tai";
-        html += `<span class="result-ball ${isTai ? 'tai-ball' : 'xiu-ball'}">${r.sum}</span>`;
-    }
+    allResults.forEach(r => {
+        html += `<span class="result-ball ${r.result === 'tai' ? 'tai-ball' : 'xiu-ball'}" title="Phiên #${round} - ${r.dice ? r.dice.join(',') : ''}">
+            ${r.sum}
+            ${r.dice ? `<div class="dice-mini">${r.dice.join('-')}</div>` : ''}
+        </span>`;
+    });
     html += `</div>
     <button class="result-copy-btn" id="resultCopyBtn">COPY</button>`;
     document.getElementById('resultHistoryPageContent').innerHTML = html;
-
+   
     document.getElementById('resultCopyBtn').onclick = function() {
-        let txt = latestResults.map(x=>x.sum).join(" - ");
+        let txt = allResults.map(x=>x.sum).join(" - ");
         navigator.clipboard.writeText(txt);
         this.textContent = "ĐÃ COPY!";
         setTimeout(()=>{this.textContent="COPY"}, 1200);
     };
 }
 
-function openResultHistoryPage() {
-    renderResultHistoryDiv();
-    document.getElementById('resultHistoryPage').style.display = "flex";
-}
-function closeResultHistoryPage() {
-    document.getElementById('resultHistoryPage').style.display = "none";
-}
-
-// ========== 3D Dice Module (for beautiful UI) ==========
+// 3D Dice functions
 function renderDice3D(elem, value) {
     elem.innerHTML = `
     <div class="dice3d-3d" style="transform: ${dice3DRotation(value)};">
@@ -678,6 +715,7 @@ function renderDice3D(elem, value) {
     </div>
     `;
 }
+
 function dice3DRotation(value) {
     const faces = {
         1: 'rotateX(0deg) rotateY(0deg)',
@@ -689,9 +727,11 @@ function dice3DRotation(value) {
     };
     return faces[value] || 'rotateX(0deg) rotateY(0deg)';
 }
+
 function getFaceClass(n) {
     return ["front","back","right","left","top","bottom"][n-1];
 }
+
 function diceFaceDots(value) {
     const dot = '<span class="dice-dot"></span>';
     const faces = {
