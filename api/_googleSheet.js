@@ -13,9 +13,9 @@ async function getSheetsClient() {
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 
 // ========== BET SHEET ==========
-// Cột: timestamp | username | side | amount | round | result
+// Cột: timestamp | username | side | amount | round | result | sum
 
-async function appendBet({ timestamp, username, side, amount, round, result }) {
+async function appendBet({ timestamp, username, side, amount, round, result, sum }) {
   const sheets = await getSheetsClient();
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
@@ -29,7 +29,8 @@ async function appendBet({ timestamp, username, side, amount, round, result }) {
         side,
         amount,
         round,
-        result
+        result,
+        sum
       ]]
     }
   });
@@ -77,11 +78,31 @@ async function setUserBalance(username, newBalance) {
   }
 }
 
-// ========== EXPORTS ==========
+// ========== Lấy lịch sử cược của user ==========
+async function getUserBets(username) {
+  const sheets = await getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: 'bets!A2:G', // Bỏ header
+  });
+  const bets = res.data.values || [];
+  return bets
+    .filter(row => row[1] === username)
+    .map(row => ({
+      time: row[0],
+      bet_side: row[2],
+      amount: row[3],
+      round: row[4],
+      result: row[5],
+      sum: row[6]
+    }));
+}
+
 module.exports = {
   getSheetsClient,
   SHEET_ID,
   appendBet,
   getUserBalance,
-  setUserBalance
+  setUserBalance,
+  getUserBets,
 };
