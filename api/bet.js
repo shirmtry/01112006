@@ -27,69 +27,81 @@ router.use(async (req, res, next) => {
 
 // Helper: lấy toàn bộ dữ liệu 1 sheet, trả về dạng object
 async function getSheetData(auth, sheetName) {
-  const client = await auth.getClient();
-  const sheets = google.sheets({ version: 'v4', auth: client });
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: sheetName,
-  });
-  const values = res.data.values || [];
-  if (values.length === 0) return [];
-  const header = values[0];
-  return values.slice(1)
-    .filter(row => row && row.length > 0 && row.some(cell => cell !== ''))
-    .map(row => {
-      let obj = {};
-      header.forEach((h, i) => obj[h] = row[i] || '');
-      return obj;
+  try {
+    const client = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: client });
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: sheetName,
     });
+    const values = res.data.values || [];
+    if (values.length === 0) return [];
+    const header = values[0];
+    return values.slice(1)
+      .filter(row => row && row.length > 0 && row.some(cell => cell !== ''))
+      .map(row => {
+        let obj = {};
+        header.forEach((h, i) => obj[h] = row[i] || '');
+        return obj;
+      });
+  } catch (err) {
+    throw new Error("Không thể lấy dữ liệu sheet: " + err.message);
+  }
 }
 
 // Helper: thêm 1 dòng vào sheet
 async function appendSheetData(auth, sheetName, rowObj) {
-  const client = await auth.getClient();
-  const sheets = google.sheets({ version: 'v4', auth: client });
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: sheetName,
-  });
-  const header = res.data.values[0];
-  const row = header.map(h => rowObj[h] || '');
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SHEET_ID,
-    range: sheetName,
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    resource: { values: [row] },
-  });
+  try {
+    const client = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: client });
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: sheetName,
+    });
+    const header = res.data.values[0];
+    const row = header.map(h => rowObj[h] || '');
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: sheetName,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      resource: { values: [row] },
+    });
+  } catch (err) {
+    throw new Error("Không thể thêm dữ liệu: " + err.message);
+  }
 }
 
 // Helper: cập nhật số dư user
 async function updateUserBalance(auth, username, delta) {
-  const data = await getSheetData(auth, USERS_SHEET);
-  const rowIdx = data.findIndex(u => u.username === username);
-  if (rowIdx < 0) throw new Error('Không tìm thấy user');
-  const balance = parseInt(data[rowIdx].balance || '0', 10);
-  const newBalance = balance + delta;
-  if (newBalance < 0) throw new Error('Số dư không đủ');
-  data[rowIdx].balance = newBalance;
-  // Update Google Sheet
-  const client = await auth.getClient();
-  const sheets = google.sheets({ version: 'v4', auth: client });
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: USERS_SHEET,
-  });
-  const header = res.data.values[0];
-  const balanceCol = header.indexOf('balance');
-  const sheetRow = rowIdx + 2; // Dòng trên sheet (header là dòng 1)
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SHEET_ID,
-    range: `${USERS_SHEET}!${String.fromCharCode(65 + balanceCol)}${sheetRow}`,
-    valueInputOption: 'USER_ENTERED',
-    resource: { values: [[String(newBalance)]] },
-  });
-  return newBalance;
+  try {
+    const data = await getSheetData(auth, USERS_SHEET);
+    const rowIdx = data.findIndex(u => u.username === username);
+    if (rowIdx < 0) throw new Error('Không tìm thấy user');
+    const balance = parseInt(data[rowIdx].balance || '0', 10);
+    const newBalance = balance + delta;
+    if (newBalance < 0) throw new Error('Số dư không đủ');
+    data[rowIdx].balance = newBalance;
+    // Update Google Sheet
+    const client = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: client });
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: USERS_SHEET,
+    });
+    const header = res.data.values[0];
+    const balanceCol = header.indexOf('balance');
+    const sheetRow = rowIdx + 2; // Dòng trên sheet (header là dòng 1)
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${USERS_SHEET}!${String.fromCharCode(65 + balanceCol)}${sheetRow}`,
+      valueInputOption: 'USER_ENTERED',
+      resource: { values: [[String(newBalance)]] },
+    });
+    return newBalance;
+  } catch (err) {
+    throw new Error("Cập nhật số dư thất bại: " + err.message);
+  }
 }
 
 // ========== API: Đặt cược ==========
@@ -100,7 +112,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Thiếu dữ liệu đặt cược' });
   }
   try {
-    const bal = await updateUserBalance(auth, username, -parseInt(amount,10));
+    const bal = await updateUserBalance(auth, username, -parseInt(amount, 10));
     const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
     await appendSheetData(auth, BETS_SHEET, {
       timestamp: now,
@@ -177,7 +189,7 @@ router.post('/settle', async (req, res) => {
         row[9] = dice3;
         await sheetsApi.spreadsheets.values.update({
           spreadsheetId: SHEET_ID,
-          range: BETS_SHEET + '!' + `A${i+1}:J${i+1}`,
+          range: BETS_SHEET + '!' + `A${i + 1}:J${i + 1}`,
           valueInputOption: 'USER_ENTERED',
           resource: { values: [row] }
         });
