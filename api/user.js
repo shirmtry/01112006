@@ -7,76 +7,95 @@ const SHEET_NAME = 'users';
 
 // --- Helper functions ---
 async function getUsers() {
-  const sheets = await getSheetsClient();
-  const resp = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: SHEET_NAME,
-  });
-  const [header, ...rows] = resp.data.values || [];
-  if (!header) return [];
-  return rows.map(row => {
-    const user = {};
-    header.forEach((key, i) => user[key] = row[i] || "");
-    return user;
-  });
+  try {
+    const sheets = await getSheetsClient();
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: SHEET_NAME,
+    });
+    const [header, ...rows] = resp.data.values || [];
+    if (!header) return [];
+    return rows.map(row => {
+      const user = {};
+      header.forEach((key, i) => user[key] = row[i] || "");
+      return user;
+    });
+  } catch (err) {
+    console.error('[getUsers] Google Sheets error:', err.message);
+    throw new Error('Không thể lấy danh sách user.');
+  }
 }
 
 async function getUserByUsername(username) {
   const users = await getUsers();
-  return users.find(u => (u.username || '').toLowerCase() === username.toLowerCase());
+  return users.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase());
 }
 
 async function appendUser({ username, passwordHash, balance = 0, ip = "", role = "user" }) {
-  const sheets = await getSheetsClient();
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SHEET_ID,
-    range: SHEET_NAME,
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    resource: { values: [[username, passwordHash, balance, ip, role]] }
-  });
+  try {
+    const sheets = await getSheetsClient();
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: SHEET_NAME,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      resource: { values: [[username, passwordHash, balance, ip, role]] }
+    });
+  } catch (err) {
+    console.error('[appendUser] Google Sheets error:', err.message);
+    throw new Error('Không thể thêm user mới.');
+  }
 }
 
 async function updateUserFields(username, fields) {
-  const sheets = await getSheetsClient();
-  const resp = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: SHEET_NAME,
-  });
-  const [header, ...rows] = resp.data.values || [];
-  const idx = rows.findIndex(r => (r[0] || '').toLowerCase() === username.toLowerCase());
-  if (idx === -1) throw new Error('Không tìm thấy user');
-  header.forEach((key, i) => {
-    if (fields[key] !== undefined) rows[idx][i] = fields[key];
-  });
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SHEET_ID,
-    range: `${SHEET_NAME}!A2`,
-    valueInputOption: 'USER_ENTERED',
-    resource: { values: rows }
-  });
+  try {
+    const sheets = await getSheetsClient();
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: SHEET_NAME,
+    });
+    const [header, ...rows] = resp.data.values || [];
+    const idx = rows.findIndex(r => (r[0] || '').toLowerCase() === username.toLowerCase());
+    if (idx === -1) throw new Error('Không tìm thấy user');
+    header.forEach((key, i) => {
+      if (fields[key] !== undefined) rows[idx][i] = fields[key];
+    });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${SHEET_NAME}!A2`,
+      valueInputOption: 'USER_ENTERED',
+      resource: { values: rows }
+    });
+  } catch (err) {
+    console.error('[updateUserFields] Google Sheets error:', err.message);
+    throw new Error('Không thể cập nhật user.');
+  }
 }
 
 async function deleteUser(username) {
-  const sheets = await getSheetsClient();
-  const resp = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: SHEET_NAME,
-  });
-  const [header, ...rows] = resp.data.values || [];
-  const idx = rows.findIndex(r => (r[0] || '').toLowerCase() === username.toLowerCase());
-  if (idx === -1) throw new Error('Không tìm thấy user');
-  // sheetId của "users" thường là 0, nếu không đúng cần lấy động.
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: SHEET_ID,
-    resource: {
-      requests: [{
-        deleteDimension: {
-          range: { sheetId: 0, dimension: "ROWS", startIndex: idx + 1, endIndex: idx + 2 }
-        }
-      }]
-    }
-  });
+  try {
+    const sheets = await getSheetsClient();
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: SHEET_NAME,
+    });
+    const [header, ...rows] = resp.data.values || [];
+    const idx = rows.findIndex(r => (r[0] || '').toLowerCase() === username.toLowerCase());
+    if (idx === -1) throw new Error('Không tìm thấy user');
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      resource: {
+        requests: [{
+          deleteDimension: {
+            range: { sheetId: 0, dimension: "ROWS", startIndex: idx + 1, endIndex: idx + 2 }
+          }
+        }]
+      }
+    });
+  } catch (err) {
+    console.error('[deleteUser] Google Sheets error:', err.message);
+    throw new Error('Không thể xóa user.');
+  }
 }
 
 // --- API endpoints ---
@@ -87,6 +106,10 @@ router.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password)
       return res.status(400).json({ error: "Thiếu username hoặc password" });
+
+    // Chặn ký tự đặc biệt hoặc xuống dòng gây lỗi sheet
+    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username))
+      return res.status(400).json({ error: "Username chỉ được chứa chữ, số, gạch dưới (3-30 ký tự)" });
 
     const existing = await getUserByUsername(username);
     if (existing)
@@ -103,7 +126,7 @@ router.post('/register', async (req, res) => {
     return res.status(201).json({ message: "Đăng ký thành công!" });
   } catch (e) {
     console.error('Register error:', e);
-    return res.status(500).json({ error: "Lỗi máy chủ, thử lại sau" });
+    return res.status(500).json({ error: e.message || "Lỗi máy chủ, thử lại sau" });
   }
 });
 
@@ -122,7 +145,6 @@ router.post('/login', async (req, res) => {
     if (!ok)
       return res.status(401).json({ error: "Mật khẩu sai" });
 
-    // Nếu muốn trả về token JWT thì bổ sung ở đây
     return res.status(200).json({
       message: "Đăng nhập thành công!",
       username: user.username,
@@ -130,7 +152,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (e) {
     console.error('Login error:', e);
-    return res.status(500).json({ error: "Lỗi máy chủ, thử lại sau" });
+    return res.status(500).json({ error: e.message || "Lỗi máy chủ, thử lại sau" });
   }
 });
 
@@ -146,11 +168,11 @@ router.get('/', async (req, res) => {
     return res.status(200).json(user);
   } catch (e) {
     console.error('Get user error:', e);
-    return res.status(500).json({ error: "Lỗi máy chủ" });
+    return res.status(500).json({ error: e.message || "Lỗi máy chủ" });
   }
 });
 
-// Cập nhật user (ví dụ đổi mật khẩu, số dư, role, ... - cần bảo vệ route này!)
+// Cập nhật user
 router.post('/update', async (req, res) => {
   try {
     const { username, ...fields } = req.body;
