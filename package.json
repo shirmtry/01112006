@@ -1,13 +1,16 @@
-
 {
-  "name": "taixiu-md5",
+  "name": "01112006",
   "version": "1.0.0",
-  "description": "Game Tài Xỉu MD5 UI + API server",
-  "main": "server.js",
+  "private": true,
   "scripts": {
-    "start": "node server.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "firebase": "^10.0.0",
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }
