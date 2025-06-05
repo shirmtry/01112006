@@ -51,31 +51,43 @@ function startRound() {
 startRound();
 
 router.get('/', (req, res) => {
-  res.json(txStatus);
+  try {
+    res.json(txStatus);
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Internal server error' });
+  }
 });
 
 router.post('/bet', (req, res) => {
-  const { username, side, amount } = req.body;
-  if (!username || !side || !amount) {
-    return res.json({ success: false, error: "Thiếu thông tin" });
+  try {
+    const { username, side, amount } = req.body;
+    if (!username || !side || !amount) {
+      return res.json({ success: false, error: "Thiếu thông tin" });
+    }
+    if (txStatus.timer <= 3) return res.json({ success: false, error: "Sắp hết phiên" });
+    bets.push({ username, side, amount, time: Date.now(), round: txStatus.round });
+    if (side === "tai") txStatus.totalTai += Number(amount);
+    if (side === "xiu") txStatus.totalXiu += Number(amount);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message || 'Internal server error' });
   }
-  if (txStatus.timer <= 3) return res.json({ success: false, error: "Sắp hết phiên" });
-  bets.push({ username, side, amount, time: Date.now(), round: txStatus.round });
-  if (side === "tai") txStatus.totalTai += Number(amount);
-  if (side === "xiu") txStatus.totalXiu += Number(amount);
-  res.json({ success: true });
 });
 
 router.post('/update', (req, res) => {
-  const { round, timer, totalTai, totalXiu, result, sum, dice } = req.body;
-  if (round !== undefined) txStatus.round = round;
-  if (timer !== undefined) txStatus.timer = timer;
-  if (totalTai !== undefined) txStatus.totalTai = totalTai;
-  if (totalXiu !== undefined) txStatus.totalXiu = totalXiu;
-  if (result !== undefined) txStatus.result = result;
-  if (sum !== undefined) txStatus.sum = sum;
-  if (dice !== undefined) txStatus.dice = dice;
-  res.json({ success: true, status: txStatus });
+  try {
+    const { round, timer, totalTai, totalXiu, result, sum, dice } = req.body;
+    if (round !== undefined) txStatus.round = round;
+    if (timer !== undefined) txStatus.timer = timer;
+    if (totalTai !== undefined) txStatus.totalTai = totalTai;
+    if (totalXiu !== undefined) txStatus.totalXiu = totalXiu;
+    if (result !== undefined) txStatus.result = result;
+    if (sum !== undefined) txStatus.sum = sum;
+    if (dice !== undefined) txStatus.dice = dice;
+    res.json({ success: true, status: txStatus });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message || 'Internal server error' });
+  }
 });
 
 module.exports = router;
