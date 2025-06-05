@@ -21,6 +21,7 @@
     </script>
 </head>
 <body>
+    <!-- AUTH WRAPPER -->
     <div class="auth-wrapper" id="authWrapper">
         <div class="login-form" id="loginForm">
             <h2>Đăng nhập</h2>
@@ -39,6 +40,7 @@
                     <span class="captcha-img" id="captchaDisplay" title="Bấm để tạo mã mới" onclick="generateCaptcha()"></span>
                 </div>
             </div>
+            <div class="msg" id="loginMsg" style="min-height:22px;margin-bottom:8px"></div>
             <div class="action-row">
                 <button type="button" class="login-btn" id="loginBtn">Đăng nhập</button>
                 <button type="button" class="register-btn" id="showRegisterLink">Đăng ký</button>
@@ -65,12 +67,14 @@
                     <span class="captcha-img" id="reg_captchaDisplay" title="Bấm để tạo mã mới" onclick="generateCaptcha('reg_')"></span>
                 </div>
             </div>
+            <div class="msg" id="registerMsg" style="min-height:22px;margin-bottom:8px"></div>
             <div class="action-row">
                 <button type="button" class="register-btn" id="registerBtn">Đăng ký</button>
                 <button type="button" class="login-btn" id="showLoginLink">Đăng nhập</button>
             </div>
         </div>
     </div>
+    <!-- GAME/MAIN CONTENT -->
     <div id="mainContent" style="display:none;">
         <div class="user-bar">
             <span>Xin chào, <span id="userNameDisplay"></span> | Số dư: <span id="userBalance">0</span>đ</span>
@@ -199,9 +203,6 @@
         <div id="resultHistoryPageContent" style="position:relative"></div>
         <button class="result-history-close-btn" id="resultHistoryPageCloseBtn" style="position:absolute;top:18px;right:28px;font-size:2rem;background:none;border:none;color:#FFD700;cursor:pointer;">×</button>
     </div>
-    <!-- v21 index.html content start -->
-    <!-- Nếu có phần code nào từ v21 index.html mà bạn muốn thêm vào, hãy chèn tại đây -->
-    <!-- v21 index.html content end -->
     <script src="main.js"></script>
 </body>
 </html>
