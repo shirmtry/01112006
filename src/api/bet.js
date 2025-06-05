@@ -1,4 +1,4 @@
-const { getSheet, appendSheet } = require("../src/lib/sheets");
+const { getSheet, appendSheet } = require("../src/api/sheets");
 
 const SHEET = "bets";
 
