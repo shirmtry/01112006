@@ -89,7 +89,6 @@ document.addEventListener("DOMContentLoaded", function() {
     // Đăng xuất
     if (document.getElementById('logoutBtn')) document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.removeItem('current_user');
-        localStorage.removeItem('is_admin');
         document.getElementById("mainContent").style.display = "none";
         document.getElementById("authWrapper").style.display = "flex";
         document.getElementById("loginForm").style.display = "block";
@@ -144,7 +143,6 @@ document.addEventListener("DOMContentLoaded", function() {
             await fetch(API_USERS, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // LƯU Ý: passwordHash là plain text hash (giống như sheet bạn gửi, không phải bcrypt)
                 body: JSON.stringify({
                     username,
                     passwordHash: hashString(password),
@@ -191,7 +189,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 return;
             }
             const user = await res.json();
-            // Phòng trường hợp API trả về object hoặc array
             let u = user;
             if (Array.isArray(user)) u = user.find(x => x.username && x.username === username);
             if (!u || !u.passwordHash) {
@@ -216,7 +213,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // Deposit popup
+     // Deposit popup
     const openDepositBtn = document.getElementById('openDepositPageBtn');
     const depositPage = document.getElementById('depositPage');
     if (openDepositBtn && depositPage) {
