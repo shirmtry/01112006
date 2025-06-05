@@ -114,6 +114,10 @@ document.addEventListener("DOMContentLoaded", function() {
             alert('Vui lòng nhập đầy đủ thông tin.');
             return;
         }
+        if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+            alert('Tên đăng nhập chỉ gồm chữ, số hoặc gạch dưới (3-30 ký tự)');
+            return;
+        }
         if (password !== password2) {
             alert('Mật khẩu nhập lại chưa khớp!');
             return;
@@ -140,6 +144,7 @@ document.addEventListener("DOMContentLoaded", function() {
             await fetch(API_USERS, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                // LƯU Ý: passwordHash là plain text hash (giống như sheet bạn gửi, không phải bcrypt)
                 body: JSON.stringify({
                     username,
                     passwordHash: hashString(password),
