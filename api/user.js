@@ -6,18 +6,22 @@ const SHEET_NAME = 'users';
 
 // Helper: Lấy toàn bộ user
 async function getUsers() {
-  const sheets = await getSheetsClient();
-  const resp = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: SHEET_NAME,
-  });
-  const [header, ...rows] = resp.data.values || [];
-  if (!header) return [];
-  return rows.map(row => {
-    const user = {};
-    header.forEach((key, i) => user[key] = row[i] || "");
-    return user;
-  });
+  try {
+    const sheets = await getSheetsClient();
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: SHEET_NAME,
+    });
+    const [header, ...rows] = resp.data.values || [];
+    if (!header) return [];
+    return rows.map(row => {
+      const user = {};
+      header.forEach((key, i) => user[key] = row[i] || "");
+      return user;
+    });
+  } catch (err) {
+    throw new Error("Không thể lấy dữ liệu user: " + err.message);
+  }
 }
 
 // GET /api/user?username=...
@@ -34,4 +38,5 @@ router.get('/', async (req, res) => {
     return res.status(500).json({ error: e.message || "Lỗi máy chủ" });
   }
 });
+
 module.exports = router;
