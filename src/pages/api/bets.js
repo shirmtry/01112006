@@ -1,18 +1,16 @@
-// Nhận cược từ client và lưu vào Firestore
-import { db } from '../../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { db } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  const { uid, roundId, choice, amount } = req.body;
 
-  const { uid, amount, choice } = req.body;
-
-  await addDoc(collection(db, 'bets'), {
+  await addDoc(collection(db, "bets"), {
     uid,
-    amount,
+    roundId,
     choice,
-    createdAt: Date.now()
+    amount,
+    createdAt: serverTimestamp()
   });
 
-  res.status(200).json({ message: "Bet placed!" });
+  res.status(200).json({ message: "Đặt cược thành công" });
 }
