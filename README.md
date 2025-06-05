@@ -1,1 +1,1 @@
-Đẳng Cấp alaf mãi mãi 
+Đẳng Cấp là mãi mãi 
