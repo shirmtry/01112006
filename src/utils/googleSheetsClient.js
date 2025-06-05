@@ -17,47 +17,36 @@ const auth = new google.auth.GoogleAuth({
 const sheets = google.sheets({ version: 'v4', auth });
 
 export async function appendToSheet(sheetName, values) {
-  try {
-    const response = await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `${sheetName}!A:Z`,
-      valueInputOption: 'USER_ENTERED',
-      resource: {
-        values: [values],
-      },
-    });
-    return response.data;
-  } catch (error) {
-    throw new Error(`Failed to append data to Google Sheet: ${error.message}`);
-  }
+  const resource = { values: [values] };
+  const request = {
+    spreadsheetId,
+    range: `${sheetName}!A:Z`,
+    valueInputOption: 'USER_ENTERED',
+    resource,
+  };
+  const response = await sheets.spreadsheets.values.append(request);
+  return response.data;
 }
 
 export async function getSheetData(sheetName) {
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${sheetName}!A:Z`,
-    });
-    return response.data.values || [];
-  } catch (error) {
-    throw new Error(`Failed to get data from Google Sheet: ${error.message}`);
-  }
+  const request = {
+    spreadsheetId,
+    range: `${sheetName}!A:Z`,
+  };
+  const response = await sheets.spreadsheets.values.get(request);
+  return response.data.values || [];
 }
 
 export async function updateSheet(sheetName, range, values) {
-  try {
-    const response = await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `${sheetName}!${range}`,
-      valueInputOption: 'USER_ENTERED',
-      resource: {
-        values: values,
-      },
-    });
-    return response.data;
-  } catch (error) {
-    throw new Error(`Failed to update Google Sheet: ${error.message}`);
-  }
+  const resource = { values: values };
+  const request = {
+    spreadsheetId,
+    range: `${sheetName}!${range}`,
+    valueInputOption: 'USER_ENTERED',
+    resource,
+  };
+  const response = await sheets.spreadsheets.values.update(request);
+  return response.data;
 }
 
 export async function getRowById(sheetName, idColumnIndex, idValue) {
